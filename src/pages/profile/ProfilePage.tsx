@@ -1,13 +1,38 @@
 import { Settings, Grid, Bookmark } from 'lucide-react';
 import { MOCK_POSTS } from '../../data/mockData';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { db } from '../../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { ExternalLink } from 'lucide-react';
 
 export function ProfilePage() {
     const { user, signOut } = useAuth();
     const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
+    const [bio, setBio] = useState('');
+    const [website, setWebsite] = useState('');
     const navigate = useNavigate();
+
+    // Fetch extended profile data
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (user?.uid && !user.isAnonymous) {
+                try {
+                    const docRef = doc(db, 'users', user.uid);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        setBio(data.bio || '');
+                        setWebsite(data.website || '');
+                    }
+                } catch (error) {
+                    console.error("Error fetching profile data:", error);
+                }
+            }
+        };
+        fetchProfileData();
+    }, [user]);
 
     const handleLogout = async () => {
         try {
@@ -64,9 +89,23 @@ export function ProfilePage() {
                     </div>
                 </div>
 
-                <p className="text-navy-light text-sm mt-4 px-6 leading-relaxed">
-                    Walking by faith, not by sight. 🌿 Psalm 23 is my anchor.
-                </p>
+                {bio && (
+                    <p className="text-navy-light text-sm mt-4 px-6 leading-relaxed whitespace-pre-wrap">
+                        {bio}
+                    </p>
+                )}
+
+                {website && (
+                    <a
+                        href={website.startsWith('http') ? website : `https://${website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-gold text-sm font-medium mt-2 hover:underline"
+                    >
+                        <ExternalLink size={14} />
+                        {website.replace(/^https?:\/\//, '')}
+                    </a>
+                )}
 
                 <button
                     onClick={() => navigate('/profile/edit')}
