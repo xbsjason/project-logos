@@ -9,6 +9,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Added storage imports
 
 import { useRef } from 'react'; // Added useRef
+import { compressImage } from '../../utils/imageUtils'; // Import compression utility
 
 export function EditProfilePage() {
     const navigate = useNavigate();
@@ -175,8 +176,11 @@ export function EditProfilePage() {
 
             setUploadingPhoto(true);
             try {
+                // Compress image before upload
+                const compressedBlob = await compressImage(file);
+
                 const storageRef = ref(storage, `profile_photos/${user.uid}`);
-                await uploadBytes(storageRef, file);
+                await uploadBytes(storageRef, compressedBlob);
                 const photoURL = await getDownloadURL(storageRef);
 
                 // Update Auth Profile immediately to show preview

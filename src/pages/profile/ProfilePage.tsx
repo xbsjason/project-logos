@@ -63,7 +63,7 @@ export function ProfilePage() {
                     <img
                         src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Faith"}
                         alt="Profile"
-                        className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200"
+                        className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200 object-cover"
                     />
                     <div className="absolute bottom-0 right-0 bg-gold text-white p-1.5 rounded-full border-2 border-white">
                         <div className="text-[10px] font-bold">12</div>
