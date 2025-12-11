@@ -9,11 +9,8 @@ export interface AppSearchContext {
     toggleSearch: () => void;
 }
 
-interface AppShellProps {
-    children?: React.ReactNode;
-}
-
-export function AppShell({ children }: AppShellProps) {
+// Removed unused interface
+export function AppShell() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     return (

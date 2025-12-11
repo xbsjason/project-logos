@@ -31,9 +31,7 @@ function ProtectedLayout() {
   }
 
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <AppShell />
   );
 }
 
