@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth'; // Import from 'firebase/auth'
-import { auth, db } from '../../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore'; // Added query imports
+import { auth, db, storage } from '../../services/firebase'; // Added storage
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Added storage imports
+
+import { useRef } from 'react'; // Added useRef
 
 export function EditProfilePage() {
     const navigate = useNavigate();
@@ -23,6 +26,8 @@ export function EditProfilePage() {
     const [usernameAvailable, setUsernameAvailable] = useState<boolean>(false);
     const [checkingUsername, setCheckingUsername] = useState(false);
     const [originalUsername, setOriginalUsername] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+    const [uploadingPhoto, setUploadingPhoto] = useState(false); // State for photo upload
 
     useEffect(() => {
         const fetchExtendedData = async () => {
@@ -149,6 +154,52 @@ export function EditProfilePage() {
         }
     };
 
+    const handlePhotoClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0] && user) {
+            const file = e.target.files[0];
+
+            // Basic validation
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                alert("File is too large. Please choose an image under 5MB.");
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert("Please select a valid image file.");
+                return;
+            }
+
+            setUploadingPhoto(true);
+            try {
+                const storageRef = ref(storage, `profile_photos/${user.uid}`);
+                await uploadBytes(storageRef, file);
+                const photoURL = await getDownloadURL(storageRef);
+
+                // Update Auth Profile immediately to show preview
+                if (auth.currentUser) {
+                    await updateProfile(auth.currentUser, { photoURL });
+                    // Also update Firestore
+                    const userRef = doc(db, 'users', user.uid);
+                    await updateDoc(userRef, { photoURL });
+                }
+
+                // Force refresh or just rely on reactive user object if it updates (might need manual state update if context doesn't auto-fetch deep changes immediately)
+                // Alternatively, use a local preview state if needed, but context user update is cleaner if it propagates.
+                // Ideally we'd have a local preview URL state, but changing the auth profile should trigger the context update.
+
+            } catch (error) {
+                console.error("Error uploading photo:", error);
+                alert("Failed to upload photo. Please try again.");
+            } finally {
+                setUploadingPhoto(false);
+            }
+        }
+    };
+
 
     return (
         <div className="bg-cream-50 min-h-full pb-20">
@@ -172,17 +223,30 @@ export function EditProfilePage() {
             )}
 
             <div className="flex flex-col items-center py-8">
-                <div className="relative group cursor-pointer">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/*"
+                />
+                <div onClick={handlePhotoClick} className="relative group cursor-pointer inline-block">
                     <img
                         src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Jason"}
                         alt="Profile"
-                        className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200"
+                        className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200 object-cover"
                     />
                     <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="text-white" size={24} />
+                        {uploadingPhoto ? <Loader2 className="text-white animate-spin" size={24} /> : <Camera className="text-white" size={24} />}
                     </div>
-                    <p className="text-gold-dark text-sm font-bold mt-2 text-center">Change Photo</p>
                 </div>
+                <button
+                    onClick={handlePhotoClick}
+                    className="text-gold-dark text-sm font-bold mt-3 hover:text-gold transition-colors"
+                    disabled={uploadingPhoto}
+                >
+                    {uploadingPhoto ? 'Uploading...' : 'Change Photo'}
+                </button>
             </div>
 
             <div className="px-4 space-y-6">

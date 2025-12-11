@@ -4,11 +4,14 @@ import { BibleChapterSelector } from '../components/bible/BibleChapterSelector';
 import { BibleReader } from '../components/bible/BibleReader';
 import { useBooks } from '../hooks/useBible';
 import type { BibleBook } from '../services/BibleService';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import type { AppSearchContext } from '../components/layout/AppShell';
 
 type ViewState = 'books' | 'chapters' | 'reader';
 
 export function BiblePage() {
+    const { toggleSearch } = useOutletContext<AppSearchContext>();
     const [view, setView] = useState<ViewState>('books');
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
     const [selectedChapter, setSelectedChapter] = useState<number>(1);
@@ -46,9 +49,17 @@ export function BiblePage() {
         <div className="min-h-full bg-cream-50">
             {view === 'books' && (
                 <>
-                    <div className="px-6 py-8">
-                        <h1 className="text-3xl font-serif font-bold text-navy">Bible</h1>
-                        <p className="text-gray-500 mt-1">Select a book to begin reading</p>
+                    <div className="px-6 py-8 flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-serif font-bold text-navy">Bible</h1>
+                            <p className="text-gray-500 mt-1">Select a book to begin reading</p>
+                        </div>
+                        <button
+                            onClick={toggleSearch}
+                            className="p-2 bg-cream-200 text-navy rounded-full active:scale-95 transition-all"
+                        >
+                            <Search size={20} />
+                        </button>
                     </div>
                     <BibleBookSelector books={books} onSelectBook={handleBookSelect} />
                 </>
