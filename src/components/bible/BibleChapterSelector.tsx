@@ -1,5 +1,5 @@
-import type { BibleBook } from '../../data/bible/bibleData';
 import { ArrowLeft } from 'lucide-react';
+import type { BibleBook } from '../../services/BibleService';
 
 interface BibleChapterSelectorProps {
     book: BibleBook;
@@ -8,7 +8,7 @@ interface BibleChapterSelectorProps {
 }
 
 export function BibleChapterSelector({ book, onSelectChapter, onBack }: BibleChapterSelectorProps) {
-    const chapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
+    const chapters = Array.from({ length: book.chapterCount }, (_, i) => i + 1);
 
     return (
         <div className="p-4">

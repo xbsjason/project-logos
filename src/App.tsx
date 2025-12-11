@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { BiblePage } from './pages/BiblePage';
@@ -9,6 +9,8 @@ import { ProfilePage } from './pages/profile/ProfilePage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { EditProfilePage } from './pages/profile/EditProfilePage';
 import { WelcomePage } from './pages/auth/WelcomePage';
+import { LoginPage } from './pages/auth/LoginPage';
+import { SignupPage } from './pages/auth/SignupPage';
 import { useAuth } from './contexts/AuthContext';
 
 function ProtectedLayout() {
@@ -16,8 +18,15 @@ function ProtectedLayout() {
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-cream-100 text-navy">Loading...</div>;
 
+  const location = useLocation();
+
   if (!user) {
     return <Navigate to="/welcome" replace />;
+  }
+
+  // Enforce username
+  if (!user.username && location.pathname !== '/profile/edit') {
+    return <Navigate to="/profile/edit" replace />;
   }
 
   return (
@@ -32,6 +41,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/welcome" element={<WelcomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
 
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomePage />} />

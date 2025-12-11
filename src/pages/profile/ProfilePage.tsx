@@ -1,26 +1,43 @@
 import { Settings, Grid, Bookmark } from 'lucide-react';
 import { MOCK_POSTS } from '../../data/mockData';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function ProfilePage() {
+    const { user, signOut } = useAuth();
     const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        try {
+            await signOut();
+            navigate('/welcome');
+        } catch (error) {
+            console.error('Failed to log out', error);
+        }
+    };
 
     return (
         <div className="pb-20 bg-cream-50 min-h-full">
             {/* Header */}
             <div className="sticky top-0 z-10 bg-white border-b border-cream-200 flex items-center justify-between px-4 h-14 shadow-sm">
                 <h1 className="font-bold text-navy text-lg">My Profile</h1>
-                <Link to="/settings" className="text-navy">
-                    <Settings size={22} />
-                </Link>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleLogout} className="text-gray-500 text-sm font-semibold">
+                        Logout
+                    </button>
+                    <Link to="/settings" className="text-navy">
+                        <Settings size={22} />
+                    </Link>
+                </div>
             </div>
 
             {/* Profile Info */}
             <div className="flex flex-col items-center pt-8 pb-6 px-4 text-center">
                 <div className="relative mb-4">
                     <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jason"
+                        src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Faith"}
                         alt="Profile"
                         className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200"
                     />
@@ -29,8 +46,8 @@ export function ProfilePage() {
                     </div>
                 </div>
 
-                <h2 className="text-xl font-bold text-navy">Jason Rybka</h2>
-                <p className="text-gray-500 text-sm">@jasonrybka</p>
+                <h2 className="text-xl font-bold text-navy">{user?.displayName || 'Faithful User'}</h2>
+                <p className="text-gray-500 text-sm">{user?.username ? (user.username.startsWith('@') ? user.username : `@${user.username}`) : '@faithful'}</p>
 
                 <div className="flex gap-4 mt-6 w-full max-w-xs justify-center">
                     <div className="text-center">
@@ -51,7 +68,10 @@ export function ProfilePage() {
                     Walking by faith, not by sight. 🌿 Psalm 23 is my anchor.
                 </p>
 
-                <button className="mt-4 px-6 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-navy w-full max-w-xs">
+                <button
+                    onClick={() => navigate('/profile/edit')}
+                    className="mt-4 px-6 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-navy w-full max-w-xs"
+                >
                     Edit Profile
                 </button>
             </div>
