@@ -2,7 +2,6 @@ import { Settings, Grid, Bookmark } from 'lucide-react';
 import { MOCK_POSTS } from '../../data/mockData';
 import { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { db } from '../../services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore'; // Changed getDoc to onSnapshot
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
