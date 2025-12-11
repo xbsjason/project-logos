@@ -18,6 +18,7 @@ interface User {
     photoURL: string | null;
     email: string | null;
     username: string | null;
+    isAnonymous: boolean;
 }
 
 interface AuthContextType {
@@ -77,7 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Faithful User' : null),
                     photoURL: firebaseUser.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Faith',
                     email: firebaseUser.email || null,
-                    username: firestoreData?.username || null
+                    username: firestoreData?.username || null,
+                    isAnonymous: firebaseUser.isAnonymous
                 });
             } else {
                 setUser(null);

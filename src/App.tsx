@@ -25,7 +25,8 @@ function ProtectedLayout() {
   }
 
   // Enforce username
-  if (!user.username && location.pathname !== '/profile/edit') {
+  // Enforce username (skip for anonymous users)
+  if (!user.username && !user.isAnonymous && location.pathname !== '/profile/edit') {
     return <Navigate to="/profile/edit" replace />;
   }
 
