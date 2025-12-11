@@ -2,7 +2,8 @@ import { Settings, Grid, Bookmark } from 'lucide-react';
 import { MOCK_POSTS } from '../../data/mockData';
 import { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { doc, onSnapshot } from 'firebase/firestore'; // Changed getDoc to onSnapshot
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ExternalLink } from 'lucide-react';
@@ -14,24 +15,23 @@ export function ProfilePage() {
     const [website, setWebsite] = useState('');
     const navigate = useNavigate();
 
-    // Fetch extended profile data
+    // Fetch extended profile data (Real-time)
     useEffect(() => {
-        const fetchProfileData = async () => {
-            if (user?.uid && !user.isAnonymous) {
-                try {
-                    const docRef = doc(db, 'users', user.uid);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        setBio(data.bio || '');
-                        setWebsite(data.website || '');
-                    }
-                } catch (error) {
-                    console.error("Error fetching profile data:", error);
+        if (user?.uid && !user.isAnonymous) {
+            const docRef = doc(db, 'users', user.uid);
+
+            const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setBio(data.bio || '');
+                    setWebsite(data.website || '');
                 }
-            }
-        };
-        fetchProfileData();
+            }, (error) => {
+                console.error("Error fetching profile data:", error);
+            });
+
+            return () => unsubscribe();
+        }
     }, [user]);
 
     const handleLogout = async () => {
