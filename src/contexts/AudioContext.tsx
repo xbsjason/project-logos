@@ -22,10 +22,61 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string>(AUDIO_CATEGORIES[0].id);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+    React.useEffect(() => {
+        if (!audioRef.current) {
+            audioRef.current = new Audio();
+        }
+
+        const audio = audioRef.current;
+
+        const handleEnded = () => {
+            playNext();
+        };
+
+        audio.addEventListener('ended', handleEnded);
+
+        return () => {
+            audio.removeEventListener('ended', handleEnded);
+            audio.pause();
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (currentTrack && audioRef.current) {
+            // Only update src if it's different to prevent reloading
+            const url = currentTrack.audioUrl;
+            if (audioRef.current.src !== url && url) {
+                audioRef.current.src = url;
+                if (isPlaying) {
+                    audioRef.current.play().catch(e => console.error("Playback failed:", e));
+                }
+            }
+        }
+    }, [currentTrack]);
+
+    React.useEffect(() => {
+        if (audioRef.current) {
+            if (isPlaying) {
+                if (audioRef.current.src) {
+                    audioRef.current.play().catch(e => console.error("Playback failed:", e));
+                }
+            } else {
+                audioRef.current.pause();
+            }
+        }
+    }, [isPlaying]);
+
 
     const playTrack = (track: AudioTrack) => {
-        setCurrentTrack(track);
-        setIsPlaying(true);
+        if (currentTrack?.id !== track.id) {
+            setCurrentTrack(track);
+            setIsPlaying(true);
+        } else {
+            // Toggling play if same track
+            setIsPlaying(!isPlaying);
+        }
     };
 
     const togglePlay = () => {
@@ -49,11 +100,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
         const currentIndex = category.tracks.findIndex(t => t.id === currentTrack.id);
 
-        // If track not in current category (e.g. category switched), maybe start from beginning or find in global
-        // For now, let's assume valid flow
+        // Find in ALL_TRACKS if not found in current category (e.g. category switched)
+        // For simplicity, we'll stick to current category logic or fallback to index 0
         if (currentIndex === -1) {
-            // Fallback: try to find in current category regardless
-            playTrack(category.tracks[0]);
+            if (category.tracks.length > 0) {
+                playTrack(category.tracks[0]);
+            }
             return;
         }
 
@@ -70,7 +122,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         const currentIndex = category.tracks.findIndex(t => t.id === currentTrack.id);
 
         if (currentIndex === -1) {
-            playTrack(category.tracks[0]);
+            if (category.tracks.length > 0) {
+                playTrack(category.tracks[0]);
+            }
             return;
         }
 

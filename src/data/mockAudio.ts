@@ -23,7 +23,7 @@ export const AUDIO_CATEGORIES: AudioCategory[] = [
                 title: 'Oceans (Where Feet May Fail)',
                 artist: 'Hillsong United',
                 coverUrl: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=400&auto=format&fit=crop&q=60',
-                audioUrl: '', // Placeholder
+                audioUrl: 'https://cdn.pixabay.com/audio/2022/10/18/audio_31c2730e64.mp3', // Piano sample
                 duration: 536
             },
             {
@@ -97,7 +97,7 @@ export const AUDIO_CATEGORIES: AudioCategory[] = [
                 title: 'Prophetic Flow',
                 artist: 'Featured Channel',
                 coverUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&auto=format&fit=crop&q=60',
-                audioUrl: '',
+                audioUrl: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3', // Relaxing ambient sample
                 duration: 600
             },
             {
