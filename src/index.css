@@ -171,3 +171,57 @@
 .animate-sacred-pulse {
   animation: sacred-pulse 3s ease-in-out infinite;
 }
+
+@keyframes sacred-aura {
+
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px rgba(212, 175, 55, 0.2),
+      0 0 40px rgba(212, 175, 55, 0.1),
+      0 0 60px rgba(212, 175, 55, 0.05);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow:
+      0 0 30px rgba(212, 175, 55, 0.4),
+      0 0 60px rgba(212, 175, 55, 0.2),
+      0 0 90px rgba(212, 175, 55, 0.1);
+    transform: scale(1.05);
+  }
+}
+
+.animate-sacred-aura {
+  animation: sacred-aura 2.5s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}

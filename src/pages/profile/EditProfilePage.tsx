@@ -1,4 +1,5 @@
 import { ArrowLeft, Camera, Check, Loader2 } from 'lucide-react';
+import { SacredLoader } from '../../components/ui/SacredLoader';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -125,11 +126,7 @@ export function EditProfilePage() {
     }, [username, originalUsername]);
 
     if (loading) {
-        return (
-            <div className="h-full flex items-center justify-center pt-20">
-                <Loader2 className="animate-spin text-gold" size={32} />
-            </div>
-        );
+        return <SacredLoader message="Loading profile..." />;
     }
 
     const handleSave = async () => {
@@ -192,44 +189,65 @@ export function EditProfilePage() {
 
             setUploadingPhoto(true);
             try {
+                // Validate user state
+                if (!auth.currentUser) {
+                    throw new Error("No authenticated user found. Please sign in again.");
+                }
+
+                console.log("[Photo Upload] Starting upload for user:", user.uid);
+                console.log("[Photo Upload] Auth current user:", auth.currentUser.uid);
+
+                // Verify UIDs match
+                if (auth.currentUser.uid !== user.uid) {
+                    console.error("[Photo Upload] UID mismatch! Context user:", user.uid, "Auth user:", auth.currentUser.uid);
+                }
+
                 // 1. CLEANUP: Delete old photo if it exists and is a firebase storage URL
                 if (user.photoURL && user.photoURL.includes('firebasestorage.googleapis.com')) {
                     try {
-                        // Create a ref from the existing URL
                         const oldImageRef = ref(storage, user.photoURL);
                         await deleteObject(oldImageRef);
+                        console.log("[Photo Upload] Old photo deleted successfully");
                     } catch (cleanupError) {
-                        console.warn("Failed to cleanup old profile photo:", cleanupError);
-                        // Continue with upload even if cleanup fails
+                        console.warn("[Photo Upload] Failed to cleanup old profile photo:", cleanupError);
                     }
                 }
 
                 // Compress image before upload
+                console.log("[Photo Upload] Compressing image...");
                 const compressedBlob = await compressImage(file);
+                console.log("[Photo Upload] Compressed to:", compressedBlob.size, "bytes");
 
-                // 2. UNIQUE FALENAME: Append timestamp to force browser cache refresh
+                // 2. UNIQUE FILENAME: Append timestamp to force browser cache refresh
                 const timestamp = Date.now();
-                const storageRef = ref(storage, `profile_photos/${user.uid}_${timestamp}`);
+                const storagePath = `profile_photos/${user.uid}_${timestamp}`;
+                console.log("[Photo Upload] Uploading to:", storagePath);
+                const storageRef = ref(storage, storagePath);
 
                 await uploadBytes(storageRef, compressedBlob);
+                console.log("[Photo Upload] Upload complete, getting download URL...");
+
                 const photoURL = await getDownloadURL(storageRef);
+                console.log("[Photo Upload] New photoURL:", photoURL);
 
-                // Update Auth Profile immediately to show preview
-                if (auth.currentUser) {
-                    await updateProfile(auth.currentUser, { photoURL });
-                    // Also update Firestore
-                    const userRef = doc(db, 'users', user.uid);
-                    await updateDoc(userRef, { photoURL });
-                }
+                // Update Auth Profile
+                console.log("[Photo Upload] Updating Firebase Auth profile...");
+                await updateProfile(auth.currentUser, { photoURL });
+                console.log("[Photo Upload] Auth profile updated");
 
-                // Force refresh or just rely on reactive user object if it updates (might need manual state update if context doesn't auto-fetch deep changes immediately)
-                // Ideally we'd have a local preview URL state, but changing the auth profile should trigger the context update.
-                // We can also forcefully update the preview if needed, but let's see if context handles it.
+                // Update Firestore
+                console.log("[Photo Upload] Updating Firestore document...");
+                const userRef = doc(db, 'users', user.uid);
+                await updateDoc(userRef, { photoURL });
+                console.log("[Photo Upload] Firestore updated successfully!");
+
+                // Update local preview to use the actual URL now
+                setPreviewUrl(photoURL);
 
             } catch (error) {
-                console.error("Error uploading photo:", error);
-                alert("Failed to upload photo. Please try again.");
-                setPreviewUrl(null); // Revert preview on error
+                console.error("[Photo Upload] Error uploading photo:", error);
+                alert(`Failed to upload photo: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                setPreviewUrl(null);
             } finally {
                 setUploadingPhoto(false);
             }

@@ -1,4 +1,4 @@
-import { Music, Search, Loader2 } from 'lucide-react';
+import { Music, Search } from 'lucide-react';
 import { FeedContainer } from '../components/feed/FeedContainer';
 import { type Post } from '../data/mockData';
 import { PostService } from '../services/PostService';
@@ -6,6 +6,7 @@ import { useAudio } from '../contexts/AudioContext';
 import { useOutletContext } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type { AppSearchContext } from '../components/layout/AppShell';
+import { SacredLoader } from '../components/ui/SacredLoader';
 
 
 export function HomePage() {
@@ -61,9 +62,7 @@ export function HomePage() {
             </div>
 
             {loading ? (
-                <div className="h-full flex items-center justify-center text-white/50">
-                    <Loader2 className="animate-spin" size={32} />
-                </div>
+                <SacredLoader message="Loading your feed..." />
             ) : posts.length > 0 ? (
                 <FeedContainer posts={posts} />
             ) : (
