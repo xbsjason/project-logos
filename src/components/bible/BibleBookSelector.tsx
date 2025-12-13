@@ -8,21 +8,18 @@ interface BibleBookSelectorProps {
     onSelectBook: (book: BibleBook) => void;
 }
 
-
-import { useBibleSettings } from '../../contexts/BibleContext';
 import { useBibleProgress } from '../../contexts/BibleProgressContext';
 
 export function BibleBookSelector({ books, onSelectBook }: BibleBookSelectorProps) {
-    const { version } = useBibleSettings();
-    const oldTestamentBooks = books.filter(b => b.testament === 'OT');
-    const newTestamentBooks = books.filter(b => b.testament === 'NT');
+    const oldTestamentBooks = books.filter(b => b.order <= 39);
+    const newTestamentBooks = books.filter(b => b.order > 39);
     const [downloadStatus, setDownloadStatus] = useState<Record<string, 'idle' | 'downloading' | 'downloaded'>>({});
     const { isChapterCompleted } = useBibleProgress();
 
     const isBookCompleted = (book: BibleBook) => {
         // Check if all chapters are completed
         for (let i = 1; i <= book.chapterCount; i++) {
-            if (!isChapterCompleted(book.id, i, version)) return false;
+            if (!isChapterCompleted(book.id, i)) return false;
         }
         return true;
     };
@@ -33,7 +30,7 @@ export function BibleBookSelector({ books, onSelectBook }: BibleBookSelectorProp
             const status: Record<string, 'idle' | 'downloading' | 'downloaded'> = {};
             // We'll check all books in parallel
             await Promise.all(books.map(async (book) => {
-                const isDownloaded = await offlineBibleService.isBookDownloaded(version, book.id);
+                const isDownloaded = await offlineBibleService.isBookDownloaded(book.id);
                 if (isDownloaded) {
                     status[book.id] = 'downloaded';
                 } else {
@@ -52,7 +49,7 @@ export function BibleBookSelector({ books, onSelectBook }: BibleBookSelectorProp
         setDownloadStatus(prev => ({ ...prev, [book.id]: 'downloading' }));
 
         try {
-            await BibleService.checkAndDownloadBook(version, book.id);
+            await BibleService.checkAndDownloadBook(book.id);
             setDownloadStatus(prev => ({ ...prev, [book.id]: 'downloaded' }));
         } catch (error) {
             console.error('Download failed', error);

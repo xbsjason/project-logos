@@ -8,7 +8,6 @@ import { UserStatsService } from '../services/UserStatsService';
 interface CompletedChapter {
     bookId: string;
     chapter: number;
-    version?: string;
     completedAt: any;
 }
 
@@ -19,11 +18,11 @@ interface BibleProgressContextType {
     loading: boolean;
     saveProgress: (location: BibleLocation) => Promise<void>;
     toggleBookmark: (location: BibleLocation) => Promise<void>;
-    isBookmarked: (bookId: string, chapter: number, verse: number, version?: string) => boolean;
+    isBookmarked: (bookId: string, chapter: number, verse: number) => boolean;
     refreshBookmarks: () => Promise<void>;
     trackPrayer: () => Promise<void>;
-    markChapterCompleted: (bookId: string, chapter: number, version?: string) => Promise<void>;
-    isChapterCompleted: (bookId: string, chapter: number, version?: string) => boolean;
+    markChapterCompleted: (bookId: string, chapter: number) => Promise<void>;
+    isChapterCompleted: (bookId: string, chapter: number) => boolean;
     resetProgress: () => Promise<void>;
 }
 
@@ -64,7 +63,6 @@ export function BibleProgressProvider({ children }: { children: React.ReactNode 
                 return {
                     bookId: data.bookId,
                     chapter: data.chapter,
-                    version: data.version,
                     completedAt: data.completedAt
                 };
             });
@@ -89,40 +87,32 @@ export function BibleProgressProvider({ children }: { children: React.ReactNode 
     const toggleBookmark = async (location: BibleLocation) => {
         if (!user || !location.verse) return;
 
-        const targetVersion = location.version || 'bsb';
-        const isAlreadyBookmarked = isBookmarked(location.bookId, location.chapter, location.verse, targetVersion);
+        const isAlreadyBookmarked = isBookmarked(location.bookId, location.chapter, location.verse);
 
         if (isAlreadyBookmarked) {
             // Remove
             setBookmarks(prev => prev.filter(b =>
-                !(b.bookId === location.bookId && b.chapter === location.chapter && b.verse === location.verse && (b.version || 'bsb') === targetVersion)
+                !(b.bookId === location.bookId && b.chapter === location.chapter && b.verse === location.verse)
             ));
-            await BibleProgressService.removeBookmark(user.uid, { ...location, version: targetVersion });
+            await BibleProgressService.removeBookmark(user.uid, location);
         } else {
             // Add
             const newBookmark: Bookmark = {
                 ...location,
-                version: targetVersion,
-                id: `${targetVersion}_${location.bookId}_${location.chapter}_${location.verse}`,
+                id: `${location.bookId}_${location.chapter}_${location.verse}`,
                 createdAt: new Date() // Temporary local date
             };
             setBookmarks(prev => [newBookmark, ...prev]);
-            await BibleProgressService.addBookmark(user.uid, { ...location, version: targetVersion });
+            await BibleProgressService.addBookmark(user.uid, location);
 
             // Track activity
             await UserStatsService.incrementStat(user.uid, 'versesRead'); // Just using versesRead as a proxy for "engagement" for now, or maybe make a specific 'bookmarksCount'
-            await UserStatsService.trackActivity(user.uid, 'bookmark', { ...location, version: targetVersion });
+            await UserStatsService.trackActivity(user.uid, 'bookmark', location);
         }
     };
 
-    const isBookmarked = (bookId: string, chapter: number, verse: number, version?: string) => {
-        const targetVersion = version || 'bsb';
-        return bookmarks.some(b =>
-            b.bookId === bookId &&
-            b.chapter === chapter &&
-            b.verse === verse &&
-            (b.version || 'bsb') === targetVersion
-        );
+    const isBookmarked = (bookId: string, chapter: number, verse: number) => {
+        return bookmarks.some(b => b.bookId === bookId && b.chapter === chapter && b.verse === verse);
     };
 
     const refreshBookmarks = async () => {
@@ -137,50 +127,34 @@ export function BibleProgressProvider({ children }: { children: React.ReactNode 
         await UserStatsService.trackActivity(user.uid, 'prayer', {});
     };
 
-    const isChapterCompleted = (bookId: string, chapter: number, version?: string) => {
-        // If version is provided, check for specific version match
-        // Legacy data might exist without version (defaulting to BSB essentially),
-        // but moving forward we want strict checking.
-        // For "universal" legacy behavior (if we wanted it), we'd check for matches OR missing version.
-        // But user request implies they want separation.
-        const targetVersion = version || 'bsb';
-        return completedChapters.some(c =>
-            c.bookId === bookId &&
-            c.chapter === chapter &&
-            (c.version === targetVersion || (!c.version && targetVersion === 'bsb')) // Fallback for legacy BSB
-        );
+    const isChapterCompleted = (bookId: string, chapter: number) => {
+        return completedChapters.some(c => c.bookId === bookId && c.chapter === chapter);
     };
 
-    const markChapterCompleted = async (bookId: string, chapter: number, version?: string) => {
+    const markChapterCompleted = async (bookId: string, chapter: number) => {
         if (!user) return;
 
-        if (isChapterCompleted(bookId, chapter, version)) return;
-
-        const targetVersion = version || 'bsb';
+        if (isChapterCompleted(bookId, chapter)) return;
 
         const newCompletion: CompletedChapter = {
             bookId,
             chapter,
-            version: targetVersion,
             completedAt: new Date()
         };
 
         setCompletedChapters(prev => [...prev, newCompletion]);
 
         // Firestore
-        // Use version in ID to separate progress
-        const completionId = `${targetVersion}_${bookId}_${chapter}`;
-
+        const completionId = `${bookId}_${chapter}`;
         await setDoc(doc(db, 'users', user.uid, 'completed_chapters', completionId), {
             bookId,
             chapter,
-            version: targetVersion,
             completedAt: serverTimestamp()
         });
 
         // Stats
         await UserStatsService.incrementStat(user.uid, 'chaptersRead');
-        await UserStatsService.trackActivity(user.uid, 'reading', { action: 'chapter_completed', bookId, chapter, version: version || 'bsb' });
+        await UserStatsService.trackActivity(user.uid, 'reading', { action: 'chapter_completed', bookId, chapter });
     };
 
     const resetProgress = async () => {

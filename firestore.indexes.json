@@ -1,23 +1,4 @@
 {
-    "indexes": [
-        {
-            "collectionGroup": "verses",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "bookId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "chapter",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "verse",
-                    "order": "ASCENDING"
-                }
-            ]
-        }
-    ],
+    "indexes": [],
     "fieldOverrides": []
 }

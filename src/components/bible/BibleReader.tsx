@@ -5,7 +5,6 @@ import type { BibleBook, BibleVerse } from '../../services/BibleService';
 import { VerseActionMenu } from './VerseActionMenu';
 import { useBibleSettings } from '../../contexts/BibleContext';
 import { BibleSettings } from './BibleSettings';
-import { VersionSelector } from './VersionSelector';
 import { useBibleProgress } from '../../contexts/BibleProgressContext';
 import { useLayout } from '../../contexts/LayoutContext';
 import useLongPress from '../../hooks/useLongPress';
@@ -92,10 +91,10 @@ function VerseItem({
 }
 
 export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirstChapter, isLastChapter, initialVerse }: BibleReaderProps) {
-    const { version, fontSize, fontFamily } = useBibleSettings();
-    const { data, loading, error } = useChapter(version, book.id, chapter);
+    const { data, loading, error } = useChapter(book.id, chapter);
     const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const { fontSize, fontFamily } = useBibleSettings();
     const { isBookmarked, saveProgress, markChapterCompleted } = useBibleProgress();
     const verses = data?.verses || [];
     const verseRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
@@ -184,8 +183,7 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                                 bookId: book.id,
                                 bookName: book.name,
                                 chapter: chapter,
-                                verse: verseId,
-                                version: version // Pass version
+                                verse: verseId
                             });
                         }
                     }
@@ -194,7 +192,7 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                 // Chapter Completion (Sentinel)
                 if (target === sentinelRef.current && entry.isIntersecting) {
                     console.log('Chapter Completed:', book.id, chapter);
-                    markChapterCompleted(book.id, chapter, version); // Pass version
+                    markChapterCompleted(book.id, chapter);
                 }
             });
         };
@@ -271,8 +269,7 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
     if (error) {
         return (
             <div className="h-full flex flex-col items-center justify-center bg-background p-4 text-center">
-                <p className="text-red-500 mb-4 font-bold">Error loading chapter</p>
-                <p className="text-xs text-red-400 font-mono mb-4 max-w-md break-words">{error.message}</p>
+                <p className="text-red-500 mb-4">Thinking about the Word... (Failed to load)</p>
                 <button onClick={onBack} className="text-primary underline">Go Back</button>
             </div>
         );
@@ -283,7 +280,6 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
             className="pb-20 pt-16 bg-background min-h-full transition-colors duration-300"
             onClick={handleContainerClick}
         >
-
             {/* Header */}
             <div
                 className="fixed top-0 left-1/2 w-full max-w-md z-10 bg-surface/90 backdrop-blur-md border-b border-default px-4 py-3 flex items-center justify-between shadow-sm transition-transform duration-300"
@@ -294,13 +290,8 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h2 className="text-xl font-ancient font-bold text-gold uppercase tracking-widest leading-none">{book.name} {chapter}</h2>
-
-                        {/* Version Selector */}
-                        <div className="relative inline-block mt-0.5 z-50">
-                            <VersionSelector variant="minimal" />
-                        </div>
-
+                        <h2 className="text-xl font-ancient font-bold text-gold uppercase tracking-widest">{book.name} {chapter}</h2>
+                        <p className="text-xs text-secondary font-sans">Berean Study Bible</p>
                     </div>
                 </div>
                 <button
@@ -321,7 +312,7 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                         fontFamily={fontFamily}
                         isSelected={selectedVerse?.verse === verse.verse}
                         isFlashing={flashingVerse === verse.verse}
-                        bookmarked={isBookmarked(book.id, chapter, verse.verse, version)}
+                        bookmarked={isBookmarked(book.id, chapter, verse.verse)}
                         onLongPress={handleVerseLongPress}
                         verseRefSetter={(id, el) => { verseRefs.current[id] = el; }}
                     />

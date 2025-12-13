@@ -1,19 +1,46 @@
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from './firebase';
 import { offlineBibleService } from './OfflineBibleService';
 
-export type { BibleBook, BibleChapter, BibleVerse } from '../types/bible';
-import type { BibleBook, BibleChapter } from '../types/bible';
-import { getBooksForVersion } from '../constants/bibleData';
+export interface BibleBook {
+    id: string;
+    name: string;
+    order: number;
+    chapterCount: number;
+}
+
+export interface BibleVerse {
+    verse: number;
+    text: string;
+}
+
+export interface BibleChapter {
+    number: number;
+    verses: BibleVerse[];
+}
+
+const BIBLE_ID = 'bsb'; // Hardcoded for now, could be dynamic later
 
 export const BibleService = {
-    async getBooks(version: string = 'bsb'): Promise<BibleBook[]> {
+    async getBooks(): Promise<BibleBook[]> {
         try {
-            // Use static data for all versions to ensure consistency and speed.
-            // This also solves the issue where non-BSB versions have no metadata in Firestore.
-            const books = getBooksForVersion(version);
+            // Try offline first
+            const cachedBooks = await offlineBibleService.getBooks();
+            if (cachedBooks && cachedBooks.length > 0) {
+                // Return cached books immediately, but maybe update in background if needed?
+                // For Bible books, list is static, so cache is fine.
+                return cachedBooks;
+            }
 
-            // Cache for next time to keep offline service populated (useful if we add dynamic features later)
+            const booksRef = collection(db, 'bibles', BIBLE_ID, 'books');
+            const q = query(booksRef, orderBy('order'));
+            const snapshot = await getDocs(q);
+            const books = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as BibleBook));
+
+            // Cache for next time
             await offlineBibleService.saveBooks(books);
             return books;
         } catch (error) {
@@ -22,114 +49,95 @@ export const BibleService = {
         }
     },
 
-    async getChapter(version: string, bookId: string, chapterNum: number): Promise<BibleChapter | null> {
+    async getChapter(bookId: string, chapterNum: number): Promise<BibleChapter | null> {
         try {
             // 1. Check local cache
-            const cachedChapter = await offlineBibleService.getChapter(version, bookId, chapterNum);
+            const cachedChapter = await offlineBibleService.getChapter(bookId, chapterNum);
             if (cachedChapter) {
+                // If we have this chapter, we might want to trigger a background download regarding the rest of the book
+                // But we should do it in a non-blocking way.
+                this.checkAndDownloadBook(bookId).catch(err => console.error('Background download trigger failed', err));
                 return cachedChapter;
             }
 
             // 2. Fetch from Firebase
-            let chapterData: BibleChapter | null = null;
+            const chapterRef = doc(db, 'bibles', BIBLE_ID, 'books', bookId, 'chapters', String(chapterNum));
+            const snapshot = await getDoc(chapterRef);
 
-            if (version === 'bsb') {
-                // Legacy path for BSB
-                const attemptFetch = async (bId: string) => {
-                    const r = doc(db, 'bibles', 'bsb', 'books', bId, 'chapters', String(chapterNum));
-                    return await getDoc(r);
-                };
-
-                // ID Fallback Logic (fixes "Judges" issue)
-                let snapshot = await attemptFetch(bookId);
-                if (!snapshot.exists() && bookId !== bookId.toLowerCase()) {
-                    console.log(`BSB: First attempt for ${bookId} failed. Trying ${bookId.toLowerCase()}`);
-                    snapshot = await attemptFetch(bookId.toLowerCase());
-                }
-
-                if (snapshot.exists()) {
-                    chapterData = snapshot.data() as BibleChapter;
-                }
-            } else {
-                // New Granular Path: bibles/{version}/verses
-                const searchBookId = bookId.toLowerCase(); // Ensure lowercase for new versions (as per import logic)
-                const versesRef = collection(db, 'bibles', version, 'verses');
-                const q = query(
-                    versesRef,
-                    where('bookId', '==', searchBookId),
-                    where('chapter', '==', chapterNum),
-                    orderBy('verse', 'asc')
-                );
-
-                const snapshot = await getDocs(q);
-                if (!snapshot.empty) {
-                    const verses = snapshot.docs.map(d => ({
-                        verse: d.data().verse,
-                        text: d.data().text
-                    }));
-                    chapterData = {
-                        number: chapterNum,
-                        verses: verses
-                    };
-                }
-            }
-
-            if (!chapterData) return null;
+            if (!snapshot.exists()) return null;
+            const chapterData = snapshot.data() as BibleChapter;
 
             // 3. Save to cache
-            await offlineBibleService.saveChapter(version, bookId, chapterData);
+            await offlineBibleService.saveChapter(bookId, chapterData);
+
+            // 4. Trigger background download of the rest of the book
+            this.checkAndDownloadBook(bookId).catch(err => console.error('Background download trigger failed', err));
 
             return chapterData;
-        } catch (error: any) {
-            console.error(`Error fetching chapter version=${version} book=${bookId} chapter=${chapterNum}:`, error);
-            if (error?.code) {
-                console.error('Firestore Error Code:', error.code);
-            }
+        } catch (error) {
+            console.error(`Error fetching chapter ${bookId} ${chapterNum}:`, error);
             throw error;
         }
     },
 
     // Background process to download the entire book
-    async checkAndDownloadBook(version: string, bookId: string) {
-        // Universal download support
-        const isDownloaded = await offlineBibleService.isBookDownloaded(version, bookId);
+    async checkAndDownloadBook(bookId: string) {
+        const isDownloaded = await offlineBibleService.isBookDownloaded(bookId);
         if (isDownloaded) return;
 
-        console.log(`Starting background download for ${version} book: ${bookId}`);
+        // Start downloading...
+        console.log(`Starting background download for book: ${bookId}`);
 
         try {
-            const books = await this.getBooks(version);
+            // Get book details to know how many chapters
+            const books = await this.getBooks();
             const book = books.find(b => b.id === bookId);
             if (!book) return;
 
+            // We will fetch chapters in batches or sequentially to not overwhelm
+            // For simplicity, let's just fetch them 
+            // Note: This might be a lot of reads. 
+            // Better strategy: Check which chapters are missing? 
+            // For now, let's just loop and fetch if missing from cache.
+
+            // We'll process in chunks of 5 parallel requests
             const batchSize = 5;
             for (let i = 1; i <= book.chapterCount; i += batchSize) {
-                const limitNum = Math.min(i + batchSize - 1, book.chapterCount);
+                const limit = Math.min(i + batchSize - 1, book.chapterCount);
                 const promises = [];
-                for (let ch = i; ch <= limitNum; ch++) {
-                    promises.push(this.ensureChapterCached(version, bookId, ch));
+                for (let ch = i; ch <= limit; ch++) {
+                    promises.push(this.ensureChapterCached(bookId, ch));
                 }
                 await Promise.all(promises);
             }
 
-            await offlineBibleService.markBookDownloadComplete(version, bookId);
-            console.log(`Completed background download for ${version} book: ${bookId}`);
+            await offlineBibleService.markBookDownloadComplete(bookId);
+            console.log(`Completed background download for book: ${bookId}`);
         } catch (error) {
-            console.error(`Error in background download for ${version} ${bookId}:`, error);
+            console.error(`Error in background download for ${bookId}:`, error);
+            // Don't throw, as this is background
         }
     },
 
-    async ensureChapterCached(version: string, bookId: string, chapterNum: number): Promise<void> {
-        // Leverages getChapter to fetch and cache if missing
-        await this.getChapter(version, bookId, chapterNum);
+    async ensureChapterCached(bookId: string, chapterNum: number): Promise<void> {
+        const cached = await offlineBibleService.getChapter(bookId, chapterNum);
+        if (cached) return;
+
+        // Fetch and save
+        const chapterRef = doc(db, 'bibles', BIBLE_ID, 'books', bookId, 'chapters', String(chapterNum));
+        const snapshot = await getDoc(chapterRef);
+        if (snapshot.exists()) {
+            await offlineBibleService.saveChapter(bookId, snapshot.data() as BibleChapter);
+        }
     },
 
-    async downloadAllBooks(version: string = 'bsb'): Promise<void> {
-        const books = await this.getBooks(version);
+    async downloadAllBooks(): Promise<void> {
+        const books = await this.getBooks();
+        // Process books in chunks of 3 to avoid overwhelming connections
         const chunk = 3;
         for (let i = 0; i < books.length; i += chunk) {
             const batch = books.slice(i, i + chunk);
-            await Promise.all(batch.map(book => this.checkAndDownloadBook(version, book.id)));
+            await Promise.all(batch.map(book => this.checkAndDownloadBook(book.id)));
         }
     }
 };

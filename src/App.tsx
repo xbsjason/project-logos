@@ -53,8 +53,6 @@ function App() {
           <Route path="/create" element={<UnifiedCreatePostScreen />} />
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/bible" element={<BiblePage />} />
-          <Route path="/bible/:version/:bookId/:chapter" element={<BiblePage />} />
-          <Route path="/bible/:version/:bookId/:chapter/:verse" element={<BiblePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:userId" element={<ProfilePage />} />
           <Route path="/profile/:userId/followers" element={<UserListPage type="followers" />} />

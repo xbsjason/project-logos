@@ -1,18 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BibleBookSelector } from '../components/bible/BibleBookSelector';
 import { BibleChapterSelector } from '../components/bible/BibleChapterSelector';
 import { BibleReader } from '../components/bible/BibleReader';
 import { useBooks } from '../hooks/useBible';
 import type { BibleBook } from '../services/BibleService';
 import { Loader2, Search } from 'lucide-react';
-import { BibleProvider, useBibleSettings } from '../contexts/BibleContext';
-import { useOutletContext, useParams } from 'react-router-dom';
+import { BibleProvider } from '../contexts/BibleContext';
+import { useOutletContext } from 'react-router-dom';
 import type { AppSearchContext } from '../components/layout/AppShell';
 import { BibleProgressProvider, useBibleProgress } from '../contexts/BibleProgressContext';
 import { Bookmark, ArrowRight } from 'lucide-react';
 import { BibleBookmarks } from '../components/bible/BibleBookmarks';
-import { VersionSelector } from '../components/bible/VersionSelector';
-import { getBooksForVersion } from '../constants/bibleData';
 
 type ViewState = 'books' | 'chapters' | 'reader' | 'bookmarks';
 
@@ -28,47 +26,12 @@ export function BiblePage() {
 
 function BiblePageContent() {
     const { toggleSearch } = useOutletContext<AppSearchContext>();
-    const { version, setVersion } = useBibleSettings(); // Get version from context
-    const { version: paramVersion, bookId: paramBookId, chapter: paramChapter, verse: paramVerse } = useParams(); // Get params
-
-    // Determine initial state based on Params
-    const [currentView, setCurrentView] = useState<ViewState>(() => {
-        if (paramBookId && paramChapter) return 'reader';
-        return 'books';
-    });
-
+    const [view, setView] = useState<ViewState>('books');
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
-    const [selectedChapter, setSelectedChapter] = useState(1);
+    const [selectedChapter, setSelectedChapter] = useState<number>(1);
     const [initialVerse, setInitialVerse] = useState<number | undefined>(undefined);
 
-    const { books, loading, error } = useBooks(); // Note: useBooks relies on version context. 
-    // If paramVersion is present, we should set it ASAP.
-
-    useEffect(() => {
-        // Deep Link Handling
-        if (paramVersion && paramVersion !== version) {
-            setVersion(paramVersion.toLowerCase() as any);
-        }
-
-        if (paramBookId && paramChapter) {
-            // Find book in the requested version (or current version if param is missing)
-            // But books list might not be updated yet if setVersion is async/effect-based.
-            // Using getBooksForVersion helper for immediate lookup is safer.
-            const targetVersion = paramVersion || version;
-            const bookList = getBooksForVersion(targetVersion);
-            const book = bookList.find(b => b.id === paramBookId.toUpperCase());
-
-            if (book) {
-                setSelectedBook(book);
-                setSelectedChapter(parseInt(paramChapter, 10));
-                if (paramVerse) {
-                    setInitialVerse(parseInt(paramVerse, 10));
-                }
-                setCurrentView('reader');
-            }
-        }
-    }, [paramVersion, paramBookId, paramChapter, paramVerse, version, setVersion]); // Run once on mount (or param change)
-
+    const { books, loading, error } = useBooks();
     const { lastRead, loading: progressLoading } = useBibleProgress();
 
     // Auto-resume logic or prompt could go here. 
@@ -87,14 +50,14 @@ function BiblePageContent() {
     const handleBookSelect = (book: BibleBook) => {
         setSelectedBook(book);
         setInitialVerse(undefined);
-        setCurrentView('chapters');
+        setView('chapters');
         scrollToTop();
     };
 
     const handleChapterSelect = (chapter: number) => {
         setSelectedChapter(chapter);
         setInitialVerse(undefined);
-        setCurrentView('reader');
+        setView('reader');
         scrollToTop();
     };
 
@@ -104,7 +67,7 @@ function BiblePageContent() {
             setSelectedBook(book);
             setSelectedChapter(bookmark.chapter);
             setInitialVerse(bookmark.verse);
-            setCurrentView('reader');
+            setView('reader');
             scrollToTop();
         }
     };
@@ -116,7 +79,7 @@ function BiblePageContent() {
                 setSelectedBook(book);
                 setSelectedChapter(lastRead.chapter);
                 setInitialVerse(lastRead.verse);
-                setCurrentView('reader');
+                setView('reader');
                 scrollToTop();
             }
         }
@@ -141,18 +104,16 @@ function BiblePageContent() {
 
     return (
         <div className="min-h-full bg-background transition-colors duration-300">
-            {currentView === 'books' && (
+            {view === 'books' && (
                 <>
                     <div className="px-6 py-8 flex justify-between items-start">
                         <div>
-                            <h1 className="text-4xl font-serif font-black text-gold tracking-widest uppercase drop-shadow-sm leading-none">Bible</h1>
-                            <div className="mt-1">
-                                <VersionSelector variant="text" />
-                            </div>
+                            <h1 className="text-4xl font-serif font-black text-gold tracking-widest uppercase drop-shadow-sm">Bible</h1>
+                            <p className="text-secondary mt-1">Select a book to begin reading</p>
                         </div>
                         <div className="flex gap-2">
                             <button
-                                onClick={() => setCurrentView('bookmarks')}
+                                onClick={() => setView('bookmarks')}
                                 className="p-2 bg-surface text-primary rounded-full hover:bg-surface-highlight active:scale-95 transition-all shadow-sm"
                             >
                                 <Bookmark size={20} />
@@ -196,38 +157,38 @@ function BiblePageContent() {
                 </>
             )}
 
-            {currentView === 'bookmarks' && (
+            {view === 'bookmarks' && (
                 <BibleBookmarks
                     onBack={() => {
-                        setCurrentView('books');
+                        setView('books');
                         scrollToTop();
                     }}
                     onSelectBookmark={handleBookmarkSelect}
                 />
             )}
 
-            {currentView === 'chapters' && selectedBook && (
+            {view === 'chapters' && selectedBook && (
                 <BibleChapterSelector
                     book={selectedBook}
                     onSelectChapter={handleChapterSelect}
                     onBack={() => {
-                        setCurrentView('books');
+                        setView('books');
                         scrollToTop();
                     }}
                 />
             )}
 
-            {currentView === 'reader' && selectedBook && (
+            {view === 'reader' && selectedBook && (
                 <BibleReader
                     book={selectedBook}
                     chapter={selectedChapter}
                     initialVerse={initialVerse}
                     onBack={() => {
-                        setCurrentView('chapters'); // Go back to books if we resumed, else chapters? Or just standard back flow? 
+                        setView('chapters'); // Go back to books if we resumed, else chapters? Or just standard back flow? 
                         // Better user exp: If came from bookmarks, maybe go back to bookmarks?
                         // For simplicity, let's check if we just want to go up one level.
                         // If we are in reader, back usually goes to chapters.
-                        setCurrentView('chapters');
+                        setView('chapters');
                         scrollToTop();
                     }}
                     onNext={() => {
