@@ -206,13 +206,13 @@ export function EditProfilePage() {
 
 
     return (
-        <div className="bg-cream-50 min-h-full pb-20">
-            <div className="bg-white border-b border-cream-200 px-4 h-14 flex items-center justify-between shadow-sm sticky top-0 z-10">
-                <button onClick={() => navigate(-1)} className="text-navy">
+        <div className="bg-background min-h-full pb-20 transition-colors duration-300">
+            <div className="bg-surface border-b border-default px-4 h-14 flex items-center justify-between shadow-sm sticky top-0 z-10 transition-colors">
+                <button onClick={() => navigate(-1)} className="text-primary">
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="font-bold text-navy text-lg">Edit Profile</h1>
-                <button onClick={handleSave} disabled={saving || !usernameAvailable || checkingUsername} className="text-gold-dark font-bold disabled:opacity-50">
+                <h1 className="font-bold text-primary text-lg">Edit Profile</h1>
+                <button onClick={handleSave} disabled={saving || !usernameAvailable || checkingUsername} className="text-accent font-bold disabled:opacity-50">
                     {saving ? <Loader2 className="animate-spin" size={24} /> : <Check size={24} />}
                 </button>
             </div>
@@ -220,7 +220,7 @@ export function EditProfilePage() {
             {/* Context Message for Missing Username */}
             {!originalUsername && (
                 <div className="bg-gold/10 px-4 py-3 text-center border-b border-gold/20">
-                    <p className="text-sm text-navy font-medium">
+                    <p className="text-sm text-primary font-medium">
                         Please choose a username to complete your profile.
                     </p>
                 </div>
@@ -238,7 +238,7 @@ export function EditProfilePage() {
                     <img
                         src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Jason"}
                         alt="Profile"
-                        className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200 object-cover"
+                        className="w-24 h-24 rounded-full border-4 border-surface shadow-md bg-surface-highlight object-cover"
                     />
                     <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         {uploadingPhoto ? <Loader2 className="text-white animate-spin" size={24} /> : <Camera className="text-white" size={24} />}
@@ -246,7 +246,7 @@ export function EditProfilePage() {
                 </div>
                 <button
                     onClick={handlePhotoClick}
-                    className="text-gold-dark text-sm font-bold mt-3 hover:text-gold transition-colors"
+                    className="text-accent text-sm font-bold mt-3 hover:text-highlight transition-colors"
                     disabled={uploadingPhoto}
                 >
                     {uploadingPhoto ? 'Uploading...' : 'Change Photo'}
@@ -255,29 +255,29 @@ export function EditProfilePage() {
 
             <div className="px-4 space-y-6">
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-navy uppercase ml-1">Name</label>
+                    <label className="text-xs font-bold text-secondary uppercase ml-1">Name</label>
                     <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full p-4 bg-white rounded-xl border border-cream-200 text-navy font-semibold focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        className="w-full p-4 bg-surface rounded-xl border border-default text-primary font-semibold focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder-secondary"
                     />
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-navy uppercase ml-1">Username</label>
+                    <label className="text-xs font-bold text-secondary uppercase ml-1">Username</label>
                     <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                        className="w-full p-4 bg-white rounded-xl border border-cream-200 text-navy font-semibold focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        className="w-full p-4 bg-surface rounded-xl border border-default text-primary font-semibold focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder-secondary"
                         placeholder="@username"
                     />
 
                     {/* Username Feedback */}
                     <div className="ml-1 min-h-[20px]">
                         {checkingUsername && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <p className="text-xs text-secondary flex items-center gap-1">
                                 <Loader2 size={12} className="animate-spin" /> Checking availability...
                             </p>
                         )}
@@ -291,22 +291,22 @@ export function EditProfilePage() {
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-navy uppercase ml-1">Bio</label>
+                    <label className="text-xs font-bold text-secondary uppercase ml-1">Bio</label>
                     <textarea
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
                         rows={4}
-                        className="w-full p-4 bg-white rounded-xl border border-cream-200 text-navy focus:outline-none focus:ring-2 focus:ring-gold/50 resize-none"
+                        className="w-full p-4 bg-surface rounded-xl border border-default text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none placeholder-secondary"
                     />
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-navy uppercase ml-1">Website</label>
+                    <label className="text-xs font-bold text-secondary uppercase ml-1">Website</label>
                     <input
                         type="text"
                         value={website}
                         onChange={(e) => setWebsite(e.target.value)}
-                        className="w-full p-4 bg-white rounded-xl border border-cream-200 text-navy focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        className="w-full p-4 bg-surface rounded-xl border border-default text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder-secondary"
                     />
                 </div>
             </div>

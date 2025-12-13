@@ -11,12 +11,12 @@ export function BibleChapterSelector({ book, onSelectChapter, onBack }: BibleCha
     const chapters = Array.from({ length: book.chapterCount }, (_, i) => i + 1);
 
     return (
-        <div className="p-4">
+        <div className="p-4 bg-background min-h-full transition-colors duration-300">
             <div className="flex items-center gap-4 mb-6">
-                <button onClick={onBack} className="p-2 -ml-2 text-navy">
+                <button onClick={onBack} className="p-2 -ml-2 text-primary hover:bg-surface rounded-full transition-colors">
                     <ArrowLeft size={24} />
                 </button>
-                <h2 className="text-2xl font-serif font-bold text-navy">{book.name}</h2>
+                <h2 className="text-2xl font-serif font-bold text-primary">{book.name}</h2>
             </div>
 
             <div className="grid grid-cols-5 gap-3">
@@ -24,7 +24,7 @@ export function BibleChapterSelector({ book, onSelectChapter, onBack }: BibleCha
                     <button
                         key={chapter}
                         onClick={() => onSelectChapter(chapter)}
-                        className="aspect-square flex items-center justify-center bg-white rounded-lg shadow-sm border border-cream-200 text-navy font-semibold text-lg active:bg-gold-light/20 active:border-gold transition-all"
+                        className="aspect-square flex items-center justify-center bg-surface rounded-lg shadow-sm border border-default text-primary font-semibold text-lg hover:border-accent hover:text-accent active:bg-surface-highlight active:scale-95 transition-all"
                     >
                         {chapter}
                     </button>

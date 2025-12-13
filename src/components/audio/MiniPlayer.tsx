@@ -1,10 +1,10 @@
-import { Play, Pause, SkipForward, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipForward, ListMusic, X } from 'lucide-react';
 import { useAudio } from '../../contexts/AudioContext';
 import { clsx } from 'clsx';
 import { useLocation } from 'react-router-dom';
 
 export function MiniPlayer() {
-    const { currentTrack, isPlaying, togglePlay, playNext, toggleSelector } = useAudio();
+    const { currentTrack, isPlaying, togglePlay, playNext, toggleSelector, closePlayer } = useAudio();
     const location = useLocation();
 
     if (!currentTrack) return null;
@@ -65,6 +65,12 @@ export function MiniPlayer() {
                         className="p-2 text-gray-400 hover:text-white transition-colors"
                     >
                         <ListMusic size={20} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); closePlayer(); }}
+                        className="p-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <X size={20} />
                     </button>
                 </div>
             </div>

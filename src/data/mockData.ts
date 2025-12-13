@@ -1,15 +1,17 @@
 export interface Post {
     id: string;
+    authorId: string; // Added for querying
     author: {
         name: string;
         avatar: string;
     };
-    type: 'video' | 'image' | 'text';
+    type: 'video' | 'image' | 'text' | 'prayer' | 'verse_art' | 'worship' | 'testimony' | 'praise';
     content: string; // URL for media or text content
     caption: string;
     likes: number;
     comments: number;
     shares: number;
+    createdAt: any; // Using any for Timestamp compatibility
     song?: {
         title: string;
         artist: string;
@@ -18,11 +20,15 @@ export interface Post {
         ref: string;
         text: string;
     };
+    // New fields
+    answered?: boolean;
+    prayerCount?: number;
 }
 
 export const MOCK_POSTS: Post[] = [
     {
         id: '1',
+        authorId: 'mock-user-id',
         author: {
             name: 'GraceWalker',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Grace'
@@ -33,6 +39,7 @@ export const MOCK_POSTS: Post[] = [
         likes: 124,
         comments: 15,
         shares: 4,
+        createdAt: new Date().toISOString(),
         verse: {
             ref: 'Psalm 46:10',
             text: 'Be still, and know that I am God.'
@@ -40,6 +47,7 @@ export const MOCK_POSTS: Post[] = [
     },
     {
         id: '2',
+        authorId: 'mock-user-id',
         author: {
             name: 'WorshipDaily',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Worship'
@@ -50,6 +58,7 @@ export const MOCK_POSTS: Post[] = [
         likes: 89,
         comments: 8,
         shares: 22,
+        createdAt: new Date().toISOString(),
         song: {
             title: 'Oceans (Where Feet May Fail)',
             artist: 'Hillsong United'
@@ -57,6 +66,7 @@ export const MOCK_POSTS: Post[] = [
     },
     {
         id: '3',
+        authorId: 'mock-user-id',
         author: {
             name: 'BibleStudyGroup',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Study'
@@ -67,6 +77,7 @@ export const MOCK_POSTS: Post[] = [
         likes: 45,
         comments: 20,
         shares: 1,
+        createdAt: new Date().toISOString(),
         verse: {
             ref: 'John 3:16',
             text: 'For God so loved the world that He gave His only begotten Son...'

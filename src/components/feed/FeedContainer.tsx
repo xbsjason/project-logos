@@ -39,10 +39,10 @@ export function FeedContainer({ posts }: FeedContainerProps) {
     return (
         <div
             ref={containerRef}
-            className="h-[calc(100vh-64px)] w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black"
+            className="h-full w-full overflow-y-scroll scrollbar-hide bg-background pb-20 pt-20 transition-colors duration-300"
         >
             {posts.map((post, index) => (
-                <div key={post.id} data-index={index} className="w-full h-full snap-start">
+                <div key={post.id} data-index={index} className="w-full mb-6">
                     <FeedPost
                         post={post}
                         isActive={index === activeIndex}

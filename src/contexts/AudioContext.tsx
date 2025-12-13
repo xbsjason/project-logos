@@ -13,6 +13,7 @@ interface AudioContextType {
     playPrevious: () => void;
     setCategory: (categoryId: string) => void;
     toggleSelector: () => void;
+    closePlayer: () => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -140,6 +141,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsSelectorOpen(prev => !prev);
     };
 
+    const closePlayer = () => {
+        setIsPlaying(false);
+        setCurrentTrack(null);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    };
+
     return (
         <AudioContext.Provider value={{
             currentTrack,
@@ -151,7 +161,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             playNext,
             playPrevious,
             setCategory,
-            toggleSelector
+            toggleSelector,
+            closePlayer
         }}>
             {children}
         </AudioContext.Provider>

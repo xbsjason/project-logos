@@ -1,152 +1,366 @@
-import { Settings, Grid, Bookmark } from 'lucide-react';
+import { Settings, ExternalLink, LayoutGrid, HeartHandshake, Image as ImageIcon, Music, Mic, HandMetal, MessageCircle, UserPlus, UserCheck, Pencil } from 'lucide-react';
 import { MOCK_POSTS } from '../../data/mockData';
+import type { Post } from '../../data/mockData';
 import { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { doc, onSnapshot } from 'firebase/firestore'; // Changed getDoc to onSnapshot
-import { Link, useNavigate } from 'react-router-dom';
+import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ExternalLink } from 'lucide-react';
+import { Play } from 'lucide-react';
+import { UserService, type UserProfile } from '../../services/UserService';
+
+type TabType = 'grid' | 'prayer' | 'verse_art' | 'worship' | 'testimony' | 'praise';
 
 export function ProfilePage() {
-    const { user, signOut } = useAuth();
-    const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
-    const [bio, setBio] = useState('');
-    const [website, setWebsite] = useState('');
+    const { user: currentUser } = useAuth();
+    const { userId: paramUserId } = useParams();
     const navigate = useNavigate();
 
-    // Fetch extended profile data (Real-time)
+    // Determine whose profile we are viewing
+    // If no param, or param matches current user, it's my profile
+    const isOwnProfile = !paramUserId || (currentUser && paramUserId === currentUser.uid);
+    const targetUserId = isOwnProfile ? currentUser?.uid : paramUserId;
+
+    const [activeTab, setActiveTab] = useState<TabType>('grid');
+    const [profileData, setProfileData] = useState<UserProfile | null>(null);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [followLoading, setFollowLoading] = useState(false);
+
+    // Fetch Profile Data
     useEffect(() => {
-        if (user?.uid && !user.isAnonymous) {
-            const docRef = doc(db, 'users', user.uid);
+        if (!targetUserId) return;
 
-            const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        setLoading(true);
+
+        const fetchProfile = async () => {
+            try {
+                // 1. Try fetching by ID (Document Key)
+                const docRef = doc(db, 'users', targetUserId);
+                const docSnap = await getDoc(docRef);
+
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setBio(data.bio || '');
-                    setWebsite(data.website || '');
+                    setProfileData(docSnap.data() as UserProfile);
+                } else {
+                    // 2. Fallback: Try fetching by 'username' field
+                    // This handles mentions like @jason linking to /profile/jason where 'jason' is username but not ID
+                    const q = query(collection(db, 'users'), where('username', '==', targetUserId));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        const userDoc = querySnapshot.docs[0];
+                        setProfileData(userDoc.data() as UserProfile);
+                        // NOTE: If we found by username, the 'targetUserId' derived from URL 
+                        // might not match the actual 'uid'. 
+                        // Ideally we should update some local state to the *actual* uid for 
+                        // subsequent operations like 'follow' or fetching posts.
+                        // However, for this MVP fix, we'll assume the data is mainly for display.
+                        // Fetching posts uses 'authorId', which normally matches the UID.
+                        // If we found by username, we need the REAL UID for fetching posts.
+                    } else {
+                        setProfileData(null);
+                    }
                 }
-            }, (error) => {
-                console.error("Error fetching profile data:", error);
-            });
+            } catch (err) {
+                console.error("Error fetching profile:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-            return () => unsubscribe();
+        fetchProfile();
+
+        // Check follow status if viewing someone else
+        if (!isOwnProfile && currentUser) {
+            UserService.isFollowing(currentUser.uid, targetUserId)
+                .then(setIsFollowing)
+                .catch(console.error);
         }
-    }, [user]);
+    }, [targetUserId, isOwnProfile, currentUser]);
 
-    const handleLogout = async () => {
+
+    // Fetch Posts
+    useEffect(() => {
+        const fetchPosts = async () => {
+            if (!targetUserId) return;
+            // distinct loading state for posts if needed, but reusing main loading for simplicity or just let it load in background
+
+            try {
+                const constraints = [
+                    where("authorId", "==", targetUserId),
+                    orderBy('createdAt', 'desc')
+                ];
+
+                if (activeTab !== 'grid') {
+                    constraints.splice(1, 0, where("type", "==", activeTab));
+                }
+
+                const q = query(collection(db, 'posts'), ...constraints);
+                const querySnapshot = await getDocs(q);
+                const fetchedPosts: Post[] = [];
+
+                querySnapshot.forEach((doc) => {
+                    fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
+                });
+
+                setPosts(fetchedPosts);
+            } catch (error) {
+                console.error("Error fetching posts:", error);
+                if (activeTab === 'grid') {
+                    setPosts(MOCK_POSTS);
+                } else {
+                    setPosts(MOCK_POSTS.filter(p => p.type === activeTab));
+                }
+            }
+        };
+
+        fetchPosts();
+    }, [targetUserId, activeTab]);
+
+
+
+    const handleFollowToggle = async () => {
+        if (!currentUser || !targetUserId || followLoading) return;
+        setFollowLoading(true);
         try {
-            await signOut();
-            navigate('/welcome');
+            if (isFollowing) {
+                await UserService.unfollowUser(currentUser.uid, targetUserId);
+                setIsFollowing(false);
+            } else {
+                await UserService.followUser(currentUser.uid, targetUserId);
+                setIsFollowing(true);
+            }
         } catch (error) {
-            console.error('Failed to log out', error);
+            console.error("Error toggling follow:", error);
+        } finally {
+            setFollowLoading(false);
         }
     };
 
-    return (
-        <div className="pb-20 bg-cream-50 min-h-full">
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-cream-200 flex items-center justify-between px-4 h-14 shadow-sm">
-                <h1 className="font-bold text-navy text-lg">My Profile</h1>
-                <div className="flex items-center gap-2">
-                    <button onClick={handleLogout} className="text-gray-500 text-sm font-semibold">
-                        Logout
-                    </button>
-                    <Link to="/settings" className="text-navy">
-                        <Settings size={22} />
-                    </Link>
+    const tabs: { id: TabType; icon: React.ReactNode; label: string }[] = [
+        { id: 'grid', icon: <LayoutGrid size={24} />, label: 'All' },
+        { id: 'prayer', icon: <HeartHandshake size={24} />, label: 'Prayer' },
+        { id: 'verse_art', icon: <ImageIcon size={24} />, label: 'Verse Art' },
+        { id: 'worship', icon: <Music size={24} />, label: 'Worship' },
+        { id: 'testimony', icon: <Mic size={24} />, label: 'Testimony' },
+        { id: 'praise', icon: <HandMetal size={24} />, label: 'Praise' },
+    ];
+
+    const renderContent = () => {
+        if (posts.length === 0) {
+            return (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
+                    <div className="bg-white dark:bg-navy-800 p-4 rounded-full mb-3 shadow-sm">
+                        {tabs.find(t => t.id === activeTab)?.icon}
+                    </div>
+                    <p>No {activeTab === 'grid' ? 'posts' : activeTab.replace('_', ' ')} yet</p>
                 </div>
-            </div>
+            );
+        }
 
-            {/* Profile Info */}
-            <div className="flex flex-col items-center pt-8 pb-6 px-4 text-center">
-                <div className="relative mb-4">
-                    <img
-                        src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Faith"}
-                        alt="Profile"
-                        className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-cream-200 object-cover"
-                    />
-                    <div className="absolute bottom-0 right-0 bg-gold text-white p-1.5 rounded-full border-2 border-white">
-                        <div className="text-[10px] font-bold">12</div>
-                    </div>
+        if (activeTab === 'prayer') {
+            return (
+                <div className="flex flex-col gap-2 p-2 animate-in fade-in duration-300">
+                    {posts.map(post => (
+                        <div key={post.id} className="bg-white dark:bg-navy-900 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-navy-800">
+                            <p className="text-navy dark:text-cream-50 mb-3 font-serif">{post.content}</p>
+                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                <span>{post.prayerCount || 0} prayed</span>
+                                {post.answered && (
+                                    <span className="bg-gold/10 text-gold-dark px-2 py-0.5 rounded-full font-medium">Answered</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
+            );
+        }
 
-                <h2 className="text-xl font-bold text-navy">{user?.displayName || 'Faithful User'}</h2>
-                <p className="text-gray-500 text-sm">{user?.username ? (user.username.startsWith('@') ? user.username : `@${user.username}`) : '@faithful'}</p>
-
-                <div className="flex gap-4 mt-6 w-full max-w-xs justify-center">
-                    <div className="text-center">
-                        <span className="block font-bold text-navy text-lg">142</span>
-                        <span className="text-xs text-gray-500">Following</span>
-                    </div>
-                    <div className="text-center">
-                        <span className="block font-bold text-navy text-lg">8.5k</span>
-                        <span className="text-xs text-gray-500">Followers</span>
-                    </div>
-                    <div className="text-center">
-                        <span className="block font-bold text-navy text-lg">12</span>
-                        <span className="text-xs text-gray-500">Devotionals</span>
-                    </div>
+        if (activeTab === 'testimony' || activeTab === 'praise') {
+            return (
+                <div className="flex flex-col gap-2 p-2 animate-in fade-in duration-300">
+                    {posts.map(post => (
+                        <div key={post.id} className="bg-white dark:bg-navy-900 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-navy-800">
+                            {activeTab === 'praise' && (
+                                <span className="inline-block bg-gold/10 text-gold text-xs font-bold px-2 py-0.5 rounded mb-2">PRAISE REPORT</span>
+                            )}
+                            <p className="text-navy dark:text-cream-50 leading-relaxed">{post.content}</p>
+                        </div>
+                    ))}
                 </div>
+            );
+        }
 
-                {bio && (
-                    <p className="text-navy-light text-sm mt-4 px-6 leading-relaxed whitespace-pre-wrap">
-                        {bio}
-                    </p>
-                )}
-
-                {website && (
-                    <a
-                        href={website.startsWith('http') ? website : `https://${website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-gold text-sm font-medium mt-2 hover:underline"
-                    >
-                        <ExternalLink size={14} />
-                        {website.replace(/^https?:\/\//, '')}
-                    </a>
-                )}
-
-                <button
-                    onClick={() => navigate('/profile/edit')}
-                    className="mt-4 px-6 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-navy w-full max-w-xs"
-                >
-                    Edit Profile
-                </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 mt-2">
-                <button
-                    onClick={() => setActiveTab('posts')}
-                    className={`flex-1 flex items-center justify-center p-3 border-b-2 text-navy ${activeTab === 'posts' ? 'border-navy' : 'border-transparent opacity-50'}`}
-                >
-                    <Grid size={24} />
-                </button>
-                <button
-                    onClick={() => setActiveTab('saved')}
-                    className={`flex-1 flex items-center justify-center p-3 border-b-2 text-navy ${activeTab === 'saved' ? 'border-navy' : 'border-transparent opacity-50'}`}
-                >
-                    <Bookmark size={24} />
-                </button>
-            </div>
-
-            {/* Grid */}
+        // Grid Layout
+        return (
             <div className="grid grid-cols-3 gap-0.5 mt-0.5">
-                {MOCK_POSTS.map((post) => (
-                    <div key={`profile-${post.id}`} className="relative aspect-[3/4] bg-gray-200">
-                        {post.type === 'video' || post.type === 'image' ? (
+                {posts.map((post) => (
+                    <div key={`profile-${post.id}`} className="relative aspect-[3/4] bg-gray-200 dark:bg-navy-800 overflow-hidden" onClick={() => navigate(`/post/${post.id}`)}>
+                        {post.type === 'image' || post.type === 'verse_art' ? (
                             <img src={post.content} className="w-full h-full object-cover" alt="" />
+                        ) : post.type === 'video' || post.type === 'worship' ? (
+                            <>
+                                <img src={post.content} className="w-full h-full object-cover" alt="" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                    <Play className="text-white fill-white" size={24} />
+                                </div>
+                            </>
                         ) : (
-                            <div className="w-full h-full bg-navy p-2 flex items-center justify-center text-center">
-                                <p className="text-white text-[8px] line-clamp-3">"{post.content}"</p>
+                            <div className="w-full h-full bg-navy dark:bg-navy-900 p-2 flex items-center justify-center text-center">
+                                <p className="text-white dark:text-cream-50 text-[10px] line-clamp-4 font-serif">"{post.content}"</p>
                             </div>
                         )}
                     </div>
                 ))}
-                {/* Fill grid */}
-                {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={`fill-${i}`} className="relative aspect-[3/4] bg-gray-100"></div>
-                ))}
+            </div>
+        );
+    };
+
+    if (loading && !profileData) {
+        return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading Profile...</div>;
+    }
+
+    if (!profileData && !loading) {
+        return <div className="p-8 text-center text-gray-500 dark:text-gray-400">User not found</div>;
+    }
+
+    return (
+        <div className="h-full w-full overflow-y-auto pb-20 bg-background min-h-screen transition-colors duration-300">
+            {/* Minimal Header */}
+            <div className="sticky top-0 z-10 flex justify-end px-4 py-2 pointer-events-none">
+                <div className="pointer-events-auto">
+                    {isOwnProfile && (
+                        <Link to="/settings" className="text-primary p-2 block bg-surface/50 backdrop-blur-md rounded-full hover:bg-surface/80 transition-all">
+                            <Settings size={20} />
+                        </Link>
+                    )}
+                </div>
+            </div>
+
+            {/* Profile Info */}
+            <div className="flex flex-col items-center pt-2 pb-6 px-4 text-center -mt-8">
+                <div className="relative">
+                    <img
+                        src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200"
+                        alt="Profile"
+                        className="w-24 h-24 rounded-full border-4 border-surface shadow-md object-cover dark:border-accent"
+                    />
+                    <div className="absolute bottom-0 right-0 bg-gold text-white text-[10px] px-2 py-0.5 rounded-full border-2 border-surface shadow-sm font-bold">
+                        LVL 12
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 justify-center">
+                    <h2 className="text-xl font-bold text-primary">{profileData?.displayName}</h2>
+                    {isOwnProfile && (
+                        <button
+                            onClick={() => navigate('/profile/edit')}
+                            className="text-secondary hover:text-primary transition-colors"
+                        >
+                            <Pencil size={16} />
+                        </button>
+                    )}
+                </div>
+
+                <p className="text-secondary text-sm">
+                    {profileData?.username
+                        ? (profileData.username.startsWith('@') ? profileData.username : `@${profileData.username}`)
+                        : '@faithful'}
+                </p>
+
+                <div className="flex gap-4 mt-6 w-full max-w-xs justify-center">
+                    <Link to={targetUserId ? `/profile/${targetUserId}/following` : '#'} className="text-center group cursor-pointer hover:bg-surface-highlight p-2 rounded-lg transition-colors">
+                        <span className="block font-bold text-primary text-lg group-hover:text-accent transition-colors">{profileData?.stats?.following || 0}</span>
+                        <span className="text-xs text-secondary">Following</span>
+                    </Link>
+                    <Link to={targetUserId ? `/profile/${targetUserId}/followers` : '#'} className="text-center group cursor-pointer hover:bg-surface-highlight p-2 rounded-lg transition-colors">
+                        <span className="block font-bold text-primary text-lg group-hover:text-accent transition-colors">{profileData?.stats?.followers || 0}</span>
+                        <span className="text-xs text-secondary">Followers</span>
+                    </Link>
+                    <div className="text-center p-2">
+                        <span className="block font-bold text-primary text-lg">{profileData?.stats?.devotionals || 0}</span>
+                        <span className="text-xs text-secondary">Devotionals</span>
+                    </div>
+                </div>
+
+                {profileData?.bio && (
+                    <p className="text-primary text-sm mt-4 px-6 leading-relaxed whitespace-pre-wrap">
+                        {profileData.bio}
+                    </p>
+                )}
+
+                {profileData?.website && (
+                    <a
+                        href={profileData.website.startsWith('http') ? profileData.website : `https://${profileData.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-accent text-sm font-medium mt-2 hover:underline"
+                    >
+                        <ExternalLink size={14} />
+                        {profileData.website.replace(/^https?:\/\//, '')}
+                    </a>
+                )}
+
+                <div className="flex gap-2 w-full max-w-xs mt-4">
+                    {!isOwnProfile && (
+                        <>
+                            <button
+                                onClick={handleFollowToggle}
+                                disabled={followLoading}
+                                className={`flex-1 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${isFollowing
+                                    ? 'bg-surface border border-default text-primary'
+                                    : 'bg-primary text-inverse border border-primary'
+                                    }`}
+                            >
+                                {followLoading ? (
+                                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : isFollowing ? (
+                                    <>
+                                        <UserCheck size={16} />
+                                        Following
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserPlus size={16} />
+                                        Follow
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => {/* navigate to message */ }}
+                                className="flex-1 py-2 bg-surface border border-default rounded-lg text-sm font-semibold text-primary flex items-center justify-center gap-2"
+                            >
+                                <MessageCircle size={16} />
+                                Message
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="sticky top-14 bg-background z-10 border-b border-default shadow-sm transition-colors duration-300">
+                <div className="flex overflow-x-auto no-scrollbar">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex flex-1 min-w-[60px] flex-col items-center justify-center py-3 px-1 border-b-2 transition-colors ${activeTab === tab.id
+                                ? 'border-accent text-primary'
+                                : 'border-transparent text-secondary hover:text-primary'
+                                }`}
+                            aria-label={tab.label}
+                        >
+                            {tab.icon}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="min-h-[300px]">
+                {renderContent()}
             </div>
         </div>
     );

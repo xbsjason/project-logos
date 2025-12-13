@@ -68,14 +68,14 @@ export function CreatePostPage() {
 
         // Default Media Uploader
         return (
-            <div className="p-4 max-w-md mx-auto">
-                <div className="aspect-[9/16] bg-cream-200 rounded-2xl border-2 border-dashed border-cream-300 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="p-4 max-w-md mx-auto w-full h-full flex flex-col justify-center">
+                <div className="w-full max-h-[60vh] aspect-[9/16] mx-auto bg-cream-100/50 rounded-2xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center relative overflow-hidden group hover:bg-cream-100 transition-colors">
                     {mediaFile ? (
                         <>
                             <div className="absolute top-2 right-2 z-10">
                                 <button
                                     onClick={() => setMediaFile(null)}
-                                    className="p-2 bg-black/50 text-white rounded-full"
+                                    className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                                 >
                                     <X size={20} />
                                 </button>
@@ -84,21 +84,21 @@ export function CreatePostPage() {
                                 <img
                                     src={URL.createObjectURL(mediaFile)}
                                     alt="Preview"
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain bg-black/5"
                                 />
                             ) : (
                                 <div className="text-center p-4">
-                                    <p className="font-bold">{mediaFile.name}</p>
+                                    <p className="font-bold text-navy">{mediaFile.name}</p>
                                 </div>
                             )}
                         </>
                     ) : (
-                        <label className="flex flex-col items-center gap-4 cursor-pointer p-8">
-                            <div className="p-4 bg-white rounded-full shadow-sm">
-                                <Upload size={32} className="text-navy" />
+                        <label className="flex flex-col items-center gap-4 cursor-pointer p-8 w-full h-full justify-center hover:scale-[1.02] transition-transform duration-200">
+                            <div className="p-5 bg-white rounded-full shadow-md text-navy group-hover:text-gold transition-colors">
+                                <Upload size={32} />
                             </div>
-                            <div className="text-center">
-                                <p className="font-bold text-navy">Upload Media</p>
+                            <div className="text-center space-y-1">
+                                <p className="font-bold text-navy text-lg">Upload Media</p>
                                 <p className="text-sm text-gray-500">Photos or Video up to 60s</p>
                             </div>
                             <input

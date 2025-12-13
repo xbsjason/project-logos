@@ -4,13 +4,16 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
 import { AudioProvider } from './contexts/AudioContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <AudioProvider>
-        <App />
-      </AudioProvider>
+      <ThemeProvider>
+        <AudioProvider>
+          <App />
+        </AudioProvider>
+      </ThemeProvider>
     </AuthProvider>
   </StrictMode>,
 )

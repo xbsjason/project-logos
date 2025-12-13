@@ -1,27 +1,16 @@
 import { useState, useEffect } from 'react';
 import { BibleService } from '../services/BibleService';
-import type { BibleBook, BibleChapter } from '../services/BibleService';
+import type { BibleChapter } from '../services/BibleService';
+
+import { BIBLE_BOOKS } from '../constants/bibleData';
 
 export function useBooks() {
-    const [books, setBooks] = useState<BibleBook[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-
-    useEffect(() => {
-        async function loadBooks() {
-            try {
-                const data = await BibleService.getBooks();
-                setBooks(data);
-            } catch (err) {
-                setError(err as Error);
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadBooks();
-    }, []);
-
-    return { books, loading, error };
+    // Return hardcoded books instantly
+    return {
+        books: BIBLE_BOOKS,
+        loading: false,
+        error: null
+    };
 }
 
 export function useChapter(bookId: string | undefined, chapter: number) {
