@@ -74,29 +74,29 @@ export function UserListPage({ type }: UserListPageProps) {
     };
 
     return (
-        <div className="bg-cream-50 min-h-screen pb-20">
+        <div className="bg-background min-h-screen pb-20 transition-colors duration-300">
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-cream-200 flex items-center px-4 h-14 shadow-sm gap-4">
+            <div className="sticky top-0 z-10 bg-surface border-b border-default flex items-center px-4 h-14 shadow-sm gap-4 transition-colors">
                 <button
                     onClick={() => navigate(-1)}
-                    className="text-navy hover:bg-cream-100 p-2 rounded-full -ml-2 transition-colors"
+                    className="text-primary hover:bg-surface-highlight p-2 rounded-full -ml-2 transition-colors"
                 >
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="font-bold text-navy text-lg capitalize">{type}</h1>
+                <h1 className="font-bold text-primary text-lg capitalize">{type}</h1>
             </div>
 
             {/* List */}
             <div className="p-4 flex flex-col gap-4">
                 {loading ? (
-                    <div className="text-center py-8 text-gray-500">Loading...</div>
+                    <div className="text-center py-8 text-secondary">Loading...</div>
                 ) : users.length === 0 ? (
-                    <div className="text-center py-16 text-gray-400">
+                    <div className="text-center py-16 text-secondary">
                         <p>No {type} found.</p>
                     </div>
                 ) : (
                     users.map(user => (
-                        <div key={user.uid} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <div key={user.uid} className="flex items-center justify-between bg-surface p-4 rounded-xl shadow-sm border border-default transition-colors">
                             <Link to={`/profile/${user.uid}`} className="flex items-center gap-3 flex-1 overflow-hidden">
                                 <Avatar
                                     src={user.photoURL || undefined}
@@ -104,8 +104,8 @@ export function UserListPage({ type }: UserListPageProps) {
                                     size="md"
                                 />
                                 <div className="min-w-0">
-                                    <h3 className="font-bold text-navy truncate">{user.displayName || 'User'}</h3>
-                                    <p className="text-sm text-gray-500 truncate">
+                                    <h3 className="font-bold text-primary truncate">{user.displayName || 'User'}</h3>
+                                    <p className="text-sm text-secondary truncate">
                                         {user.username ? `@${user.username}` : ''}
                                     </p>
                                 </div>
@@ -116,8 +116,8 @@ export function UserListPage({ type }: UserListPageProps) {
                                 <button
                                     onClick={() => handleFollowToggle(user)}
                                     className={`ml-2 p-2 rounded-lg transition-colors flex-shrink-0 ${followingStatus[user.uid]
-                                            ? 'bg-gray-100 text-navy'
-                                            : 'bg-navy/10 text-navy hover:bg-navy/20'
+                                        ? 'bg-surface-highlight text-primary'
+                                        : 'bg-accent/10 text-accent hover:bg-accent/20'
                                         }`}
                                 >
                                     {followingStatus[user.uid] ? <UserCheck size={20} /> : <UserPlus size={20} />}
