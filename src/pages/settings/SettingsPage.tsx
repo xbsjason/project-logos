@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AVAILABLE_VERSIONS } from '../../contexts/BibleContext';
 import { BibleService } from '../../services/BibleService';
 import { SeedButton } from '../../components/debug/SeedButton';
 
@@ -12,23 +13,26 @@ export function SettingsPage() {
     const { theme, setTheme } = useTheme();
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-    const [downloadStatus, setDownloadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [downloadStatus, setDownloadStatus] = useState<Record<string, 'idle' | 'loading' | 'success' | 'error'>>({});
 
-    const handleDownloadBible = async () => {
-        if (downloadStatus === 'loading' || downloadStatus === 'success') return;
+    const handleDownloadBible = async (versionId: string) => {
+        if (downloadStatus[versionId] === 'loading' || downloadStatus[versionId] === 'success') return;
 
-        if (!confirm('This will download the entire Bible for offline use. It may take a minute or two. Continue?')) {
+        // Find version name
+        const versionName = AVAILABLE_VERSIONS.find(v => v.id === versionId)?.name || versionId;
+
+        if (!confirm(`Download ${versionName} for offline use?`)) {
             return;
         }
 
-        setDownloadStatus('loading');
+        setDownloadStatus(prev => ({ ...prev, [versionId]: 'loading' }));
         try {
-            await BibleService.downloadAllBooks();
-            setDownloadStatus('success');
+            await BibleService.downloadAllBooks(versionId);
+            setDownloadStatus(prev => ({ ...prev, [versionId]: 'success' }));
         } catch (error) {
             console.error('Failed to download Bible', error);
-            setDownloadStatus('error');
-            setTimeout(() => setDownloadStatus('idle'), 3000);
+            setDownloadStatus(prev => ({ ...prev, [versionId]: 'error' }));
+            setTimeout(() => setDownloadStatus(prev => ({ ...prev, [versionId]: 'idle' })), 3000);
         }
     };
 
@@ -75,34 +79,40 @@ export function SettingsPage() {
                 {/* Offline Access Section */}
                 <section>
                     <h2 className="text-sm font-bold text-secondary uppercase mb-2 px-2">Offline Access</h2>
-                    <div className="bg-surface rounded-xl shadow-sm border border-default overflow-hidden transition-colors duration-300">
-                        <button
-                            onClick={handleDownloadBible}
-                            className="w-full flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg transition-colors ${downloadStatus === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gold/20 text-gold dark:text-gold'}`}>
-                                    {downloadStatus === 'loading' ? (
-                                        <Loader2 size={20} className="animate-spin" />
-                                    ) : downloadStatus === 'success' ? (
-                                        <Check size={20} />
-                                    ) : (
-                                        <Download size={20} />
-                                    )}
+                    <div className="bg-surface rounded-xl shadow-sm border border-default overflow-hidden transition-colors duration-300 divide-y divide-default">
+                        {AVAILABLE_VERSIONS.map((v) => (
+                            <button
+                                key={v.id}
+                                onClick={() => handleDownloadBible(v.id)}
+                                disabled={downloadStatus[v.id] === 'loading' || downloadStatus[v.id] === 'success'}
+                                className="w-full flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors disabled:opacity-80"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg transition-colors ${downloadStatus[v.id] === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gold/20 text-gold dark:text-gold'}`}>
+                                        {downloadStatus[v.id] === 'loading' ? (
+                                            <Loader2 size={20} className="animate-spin" />
+                                        ) : downloadStatus[v.id] === 'success' ? (
+                                            <Check size={20} />
+                                        ) : (
+                                            <Download size={20} />
+                                        )}
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="text-primary font-medium block">
+                                            {v.name}
+                                        </span>
+                                        <span className="text-xs text-secondary block mt-0.5">
+                                            {downloadStatus[v.id] === 'loading' ? 'Downloading...' :
+                                                downloadStatus[v.id] === 'success' ? 'Downloaded' :
+                                                    'Tap to download'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="text-left">
-                                    <span className="text-primary font-medium block">
-                                        {downloadStatus === 'loading' ? 'Downloading Bible...' :
-                                            downloadStatus === 'success' ? 'Bible Downloaded' :
-                                                'Download Entire Bible'}
-                                    </span>
-                                    {downloadStatus === 'idle' && (
-                                        <span className="text-xs text-secondary block mt-0.5">Available for offline reading</span>
-                                    )}
-                                </div>
-                            </div>
-                            {downloadStatus === 'idle' && <ChevronRight size={20} className="text-secondary" />}
-                        </button>
+                                {downloadStatus[v.id] !== 'loading' && downloadStatus[v.id] !== 'success' && (
+                                    <ChevronRight size={20} className="text-secondary" />
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </section>
 

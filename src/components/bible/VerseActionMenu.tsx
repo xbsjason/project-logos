@@ -13,13 +13,16 @@ interface VerseActionMenuProps {
     verse: number;
 }
 
+import { useBibleSettings } from '../../contexts/BibleContext';
+
 export function VerseActionMenu({ isOpen, onClose, verseRef, verseText, bookId, chapter, verse }: VerseActionMenuProps) {
     const navigate = useNavigate();
     const { toggleBookmark, isBookmarked } = useBibleProgress();
+    const { version } = useBibleSettings();
 
     if (!isOpen) return null;
 
-    const isSaved = isBookmarked(bookId, chapter, verse);
+    const isSaved = isBookmarked(bookId, chapter, verse, version);
 
     const handleCopy = () => {
         // In real app: navigator.clipboard.writeText(...)
@@ -37,16 +40,18 @@ export function VerseActionMenu({ isOpen, onClose, verseRef, verseText, bookId, 
         navigate(`/create?${params.toString()}`);
     };
 
-    const handleBookmark = async () => {
-        await toggleBookmark({
+    const handleBookmark = () => {
+        toggleBookmark({
             bookId,
             bookName: verseRef.split(' ')[0], // Rough extraction, passed ref usually has book name
             chapter,
-            verse
+            verse,
+            version
         });
         // Don't close immediately so they see the toggle state? Or close?
         // Usually nice to close after an action, but toggle might be better to stay open?
         // Let's close for now for snappy feel.
+        // Wait small amount for visual feedback if needed, but user requested dismiss.
         onClose();
     };
 

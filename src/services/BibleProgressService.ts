@@ -6,6 +6,7 @@ export interface BibleLocation {
     bookName: string;
     chapter: number;
     verse?: number; // Optional, for bookmarks or precision
+    version?: string; // Optional, defaults to 'bsb' if missing
     timestamp?: any;
 }
 
@@ -50,12 +51,14 @@ export const BibleProgressService = {
     async addBookmark(userId: string, location: BibleLocation) {
         if (!userId) return;
 
-        // Use a composite ID to prevent duplicates easily: bookId_chapter_verse
-        const bookmarkId = `${location.bookId}_${location.chapter}_${location.verse}`;
+        // Use a composite ID to prevent duplicates easily: version_bookId_chapter_verse
+        const version = location.version || 'bsb';
+        const bookmarkId = `${version}_${location.bookId}_${location.chapter}_${location.verse}`;
         const bookmarkRef = doc(db, 'users', userId, 'bookmarks', bookmarkId);
 
         await setDoc(bookmarkRef, {
             ...location,
+            version, // Ensure version is explicitly saved
             createdAt: serverTimestamp()
         });
     },
@@ -66,7 +69,8 @@ export const BibleProgressService = {
     async removeBookmark(userId: string, location: BibleLocation) {
         if (!userId) return;
 
-        const bookmarkId = `${location.bookId}_${location.chapter}_${location.verse}`;
+        const version = location.version || 'bsb';
+        const bookmarkId = `${version}_${location.bookId}_${location.chapter}_${location.verse}`;
         const bookmarkRef = doc(db, 'users', userId, 'bookmarks', bookmarkId);
 
         await deleteDoc(bookmarkRef);

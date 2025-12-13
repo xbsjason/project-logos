@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
+import { useBibleSettings } from '../contexts/BibleContext';
+import { getBooksForVersion } from '../constants/bibleData';
 import { BibleService } from '../services/BibleService';
 import type { BibleChapter } from '../services/BibleService';
 
-import { BIBLE_BOOKS } from '../constants/bibleData';
-
 export function useBooks() {
-    // Return hardcoded books instantly
+    const { version } = useBibleSettings();
+    const books = getBooksForVersion(version);
+
     return {
-        books: BIBLE_BOOKS,
+        books,
         loading: false,
         error: null
     };
 }
 
-export function useChapter(bookId: string | undefined, chapter: number) {
+export function useChapter(version: string, bookId: string | undefined, chapter: number) {
     const [data, setData] = useState<BibleChapter | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -24,7 +26,7 @@ export function useChapter(bookId: string | undefined, chapter: number) {
         async function loadChapter() {
             setLoading(true);
             try {
-                const chapterData = await BibleService.getChapter(bookId!, chapter);
+                const chapterData = await BibleService.getChapter(version, bookId!, chapter);
                 setData(chapterData);
             } catch (err) {
                 setError(err as Error);
@@ -33,7 +35,7 @@ export function useChapter(bookId: string | undefined, chapter: number) {
             }
         }
         loadChapter();
-    }, [bookId, chapter]);
+    }, [version, bookId, chapter]);
 
     return { data, loading, error };
 }

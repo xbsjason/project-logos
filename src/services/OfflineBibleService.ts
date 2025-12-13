@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { BibleBook, BibleChapter } from './BibleService';
+import type { BibleBook, BibleChapter } from '../types/bible';
 
 const DB_NAME = 'faithvoice-bible-db';
 const DB_VERSION = 1;
@@ -49,8 +49,12 @@ class OfflineBibleService {
         });
     }
 
-    private getChapterKey(bookId: string, chapterNum: number): string {
-        return `${bookId}_${chapterNum}`;
+    private getChapterKey(version: string, bookId: string, chapterNum: number): string {
+        return `${version}_${bookId}_${chapterNum}`;
+    }
+
+    private getDownloadKey(version: string, bookId: string): string {
+        return `${version}_${bookId}`;
     }
 
     async saveBooks(books: BibleBook[]): Promise<void> {
@@ -67,39 +71,55 @@ class OfflineBibleService {
         return db.getAll('books');
     }
 
-    async saveChapter(bookId: string, chapter: BibleChapter): Promise<void> {
+    async saveChapter(version: string, bookId: string, chapter: BibleChapter): Promise<void> {
         const db = await this.dbPromise;
         await db.put('chapters', {
             ...chapter,
             bookId,
-            id: this.getChapterKey(bookId, chapter.number)
+            version,
+            id: this.getChapterKey(version, bookId, chapter.number)
         } as any);
     }
 
-    async getChapter(bookId: string, chapterNum: number): Promise<BibleChapter | undefined> {
+    async getChapter(version: string, bookId: string, chapterNum: number): Promise<BibleChapter | undefined> {
         const db = await this.dbPromise;
-        const result = await db.get('chapters', this.getChapterKey(bookId, chapterNum));
+
+        // Try new key format
+        let result = await db.get('chapters', this.getChapterKey(version, bookId, chapterNum));
+
+        // Fallback for BSB legacy keys
+        if (!result && version === 'bsb') {
+            result = await db.get('chapters', `${bookId}_${chapterNum}`);
+        }
+
         if (result) {
-            // Remove the internal ID and bookId before returning to match BibleChapter interface strictly if needed,
-            // but keeping them is usually fine.
-            const { id, bookId: _b, ...chapter } = result as any;
+            const { id, bookId: _b, version: _v, ...chapter } = result as any;
             return chapter as BibleChapter;
         }
         return undefined;
     }
 
-    async markBookDownloadComplete(bookId: string): Promise<void> {
+    async markBookDownloadComplete(version: string, bookId: string): Promise<void> {
         const db = await this.dbPromise;
         await db.put('downloads', {
-            bookId,
+            bookId: this.getDownloadKey(version, bookId), // Use composite key as ID
             isComplete: true,
             lastUpdated: Date.now(),
-        });
+            originalBookId: bookId,
+            version
+        } as any);
     }
 
-    async isBookDownloaded(bookId: string): Promise<boolean> {
+    async isBookDownloaded(version: string, bookId: string): Promise<boolean> {
         const db = await this.dbPromise;
-        const record = await db.get('downloads', bookId);
+        // Try new key
+        let record = await db.get('downloads', this.getDownloadKey(version, bookId));
+
+        // Fallback for BSB
+        if (!record && version === 'bsb') {
+            record = await db.get('downloads', bookId);
+        }
+
         return !!record?.isComplete;
     }
 
