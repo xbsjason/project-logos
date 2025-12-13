@@ -135,7 +135,7 @@ function BiblePageContent() {
                             </div>
                         </div>
                     ) : lastRead ? (
-                        <div className="px-6 mb-6 animate-fade-in-up">
+                        <div className="px-6 mb-6">
                             <button
                                 onClick={handleResume}
                                 className="w-full bg-surface border border-gold/30 p-4 rounded-xl flex items-center justify-between shadow-sm hover:border-gold transition-all group relative overflow-hidden animate-shimmer-gold"
