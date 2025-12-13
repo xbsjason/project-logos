@@ -49,16 +49,16 @@
     /* cream-100 */
     --text-secondary: #9CA3AF;
     /* gray-400 */
-    --text-accent: #3B82F6;
-    /* blue-500 (Requested Blue) */
+    --text-accent: #D4AF37;
+    /* gold (Updated from Blue) */
     --text-inverse: #0B1120;
     /* navy */
 
     /* Borders */
     --border-default: #1e293b;
     /* navy-800 */
-    --border-highlight: #3B82F6;
-    /* blue-500 */
+    --border-highlight: #D4AF37;
+    /* gold */
   }
 
   html,
