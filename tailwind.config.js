@@ -72,6 +72,7 @@ export default {
       fontFamily: {
         sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Inter', 'sans-serif'],
         serif: ['New York', 'Charter', 'Georgia', 'serif'],
+        ancient: ['Cinzel', 'serif'],
       }
     },
   },

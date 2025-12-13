@@ -8,10 +8,21 @@ interface BibleBookSelectorProps {
     onSelectBook: (book: BibleBook) => void;
 }
 
+import { useBibleProgress } from '../../contexts/BibleProgressContext';
+
 export function BibleBookSelector({ books, onSelectBook }: BibleBookSelectorProps) {
     const oldTestamentBooks = books.filter(b => b.order <= 39);
     const newTestamentBooks = books.filter(b => b.order > 39);
     const [downloadStatus, setDownloadStatus] = useState<Record<string, 'idle' | 'downloading' | 'downloaded'>>({});
+    const { isChapterCompleted } = useBibleProgress();
+
+    const isBookCompleted = (book: BibleBook) => {
+        // Check if all chapters are completed
+        for (let i = 1; i <= book.chapterCount; i++) {
+            if (!isChapterCompleted(book.id, i)) return false;
+        }
+        return true;
+    };
 
     useEffect(() => {
         // Check initial status
@@ -58,7 +69,8 @@ export function BibleBookSelector({ books, onSelectBook }: BibleBookSelectorProp
                 <span className="font-serif text-lg text-primary group-hover:text-gold transition-colors">{book.name}</span>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-secondary bg-surface-highlight px-2 py-1 rounded-full">
+                    <span className="text-xs font-medium text-secondary bg-surface-highlight px-2 py-1 rounded-full flex items-center gap-1">
+                        {isBookCompleted(book) && <Check size={12} className="text-gold" />}
                         {book.chapterCount} ch
                     </span>
                     <div

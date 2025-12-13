@@ -1,5 +1,6 @@
 import { Moon, Sun, Monitor, Type, Minus, Plus, X } from 'lucide-react';
 import { useBibleSettings, type FontFamily } from '../../contexts/BibleContext';
+import { useBibleProgress } from '../../contexts/BibleProgressContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BibleSettingsProps {
@@ -10,6 +11,7 @@ interface BibleSettingsProps {
 export function BibleSettings({ isOpen, onClose }: BibleSettingsProps) {
     const { fontSize, setFontSize, fontFamily, setFontFamily } = useBibleSettings();
     const { theme, setTheme } = useTheme();
+    const { resetProgress } = useBibleProgress();
 
     if (!isOpen) return null;
 
@@ -23,7 +25,7 @@ export function BibleSettings({ isOpen, onClose }: BibleSettingsProps) {
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
             <div
-                className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-6 space-y-6 shadow-xl border border-default animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200"
+                className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-6 space-y-6 shadow-xl border border-default animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
@@ -129,6 +131,20 @@ export function BibleSettings({ isOpen, onClose }: BibleSettingsProps) {
                             </button>
                         ))}
                     </div>
+                </div>
+                {/* Reset Progress */}
+                <div className="pt-2 border-t border-default/50">
+                    <button
+                        onClick={() => {
+                            if (window.confirm('Are you sure you want to reset your reading progress? This cannot be undone.')) {
+                                resetProgress();
+                                onClose();
+                            }
+                        }}
+                        className="w-full py-3 text-red-500 font-medium hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors"
+                    >
+                        Reset Reading Progress
+                    </button>
                 </div>
             </div>
         </div>

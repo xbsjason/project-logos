@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import type { BibleBook } from '../../services/BibleService';
+import { useBibleProgress } from '../../contexts/BibleProgressContext';
 
 interface BibleChapterSelectorProps {
     book: BibleBook;
@@ -9,6 +10,7 @@ interface BibleChapterSelectorProps {
 
 export function BibleChapterSelector({ book, onSelectChapter, onBack }: BibleChapterSelectorProps) {
     const chapters = Array.from({ length: book.chapterCount }, (_, i) => i + 1);
+    const { isChapterCompleted } = useBibleProgress();
 
     return (
         <div className="p-4 bg-background min-h-full transition-colors duration-300">
@@ -20,15 +22,23 @@ export function BibleChapterSelector({ book, onSelectChapter, onBack }: BibleCha
             </div>
 
             <div className="grid grid-cols-5 gap-3">
-                {chapters.map((chapter) => (
-                    <button
-                        key={chapter}
-                        onClick={() => onSelectChapter(chapter)}
-                        className="aspect-square flex items-center justify-center bg-surface rounded-lg shadow-sm border border-default text-primary font-semibold text-lg hover:border-accent hover:text-accent active:bg-surface-highlight active:scale-95 transition-all"
-                    >
-                        {chapter}
-                    </button>
-                ))}
+                {chapters.map((chapter) => {
+                    const isCompleted = isChapterCompleted(book.id, chapter);
+                    return (
+                        <button
+                            key={chapter}
+                            onClick={() => onSelectChapter(chapter)}
+                            className={`aspect-square flex items-center justify-center rounded-lg shadow-sm border text-lg font-semibold transition-all active:scale-95
+                                ${isCompleted
+                                    ? 'bg-gold/10 border-gold/30 text-gold'
+                                    : 'bg-surface border-default text-primary hover:border-accent hover:text-accent active:bg-surface-highlight'
+                                }
+                            `}
+                        >
+                            {chapter}
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

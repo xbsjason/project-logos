@@ -17,7 +17,7 @@ function AppShellContent() {
     return (
         <div className="h-screen w-screen overflow-hidden bg-background text-primary font-sans antialiased flex flex-col items-center transition-colors duration-300">
             <div className="w-full max-w-md h-full bg-transparent relative shadow-2xl flex flex-col transition-colors duration-300">
-                <main className="flex-1 relative h-full w-full overflow-hidden">
+                <main className="flex-1 relative h-full w-full overflow-y-auto scrollbar-hide" id="main-scroll-container">
                     <Outlet context={{ toggleSearch: () => setIsSearchOpen(true) }} />
                 </main>
                 <MiniPlayer />

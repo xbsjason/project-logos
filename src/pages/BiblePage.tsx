@@ -37,14 +37,28 @@ function BiblePageContent() {
     // Auto-resume logic or prompt could go here. 
     // For now, let's just show a "Resume Reading" banner if we are in book selection mode.
 
+    // Scroll Helper
+    const scrollToTop = () => {
+        const mainContainer = document.getElementById('main-scroll-container');
+        if (mainContainer) {
+            mainContainer.scrollTo({ top: 0, behavior: 'instant' });
+        } else {
+            window.scrollTo(0, 0);
+        }
+    };
+
     const handleBookSelect = (book: BibleBook) => {
         setSelectedBook(book);
+        setInitialVerse(undefined);
         setView('chapters');
+        scrollToTop();
     };
 
     const handleChapterSelect = (chapter: number) => {
         setSelectedChapter(chapter);
+        setInitialVerse(undefined);
         setView('reader');
+        scrollToTop();
     };
 
     const handleBookmarkSelect = (bookmark: any) => { // Type 'any' for now to avoid strict import coupling issues if types not exported perfectly, but we should import Bookmark
@@ -54,6 +68,7 @@ function BiblePageContent() {
             setSelectedChapter(bookmark.chapter);
             setInitialVerse(bookmark.verse);
             setView('reader');
+            scrollToTop();
         }
     };
 
@@ -65,6 +80,7 @@ function BiblePageContent() {
                 setSelectedChapter(lastRead.chapter);
                 setInitialVerse(lastRead.verse);
                 setView('reader');
+                scrollToTop();
             }
         }
     };
@@ -92,7 +108,7 @@ function BiblePageContent() {
                 <>
                     <div className="px-6 py-8 flex justify-between items-start">
                         <div>
-                            <h1 className="text-3xl font-serif font-bold text-primary">Bible</h1>
+                            <h1 className="text-4xl font-serif font-black text-gold tracking-widest uppercase drop-shadow-sm">Bible</h1>
                             <p className="text-secondary mt-1">Select a book to begin reading</p>
                         </div>
                         <div className="flex gap-2">
@@ -111,13 +127,13 @@ function BiblePageContent() {
                         </div>
                     </div>
 
-                    {/* Resume Reading Banner - Only shows when loaded */}
+                    {/* Resume Reading Banner */}
                     {progressLoading ? (
-                        // Optional: Skeleton loader for the banner to prevent layout shift, 
-                        // or just nothing if we want it to "pop" in.
-                        // User asked for "gold shimmer into view", implying it appears.
-                        // Let's keep it null so it enters.
-                        null
+                        <div className="px-6 mb-6">
+                            <div className="w-full h-[72px] bg-surface/50 border border-gold/20 rounded-xl relative overflow-hidden">
+                                <div className="absolute inset-0 animate-shimmer-gold brightness-150" />
+                            </div>
+                        </div>
                     ) : lastRead ? (
                         <div className="px-6 mb-6 animate-fade-in-up">
                             <button
@@ -143,7 +159,10 @@ function BiblePageContent() {
 
             {view === 'bookmarks' && (
                 <BibleBookmarks
-                    onBack={() => setView('books')}
+                    onBack={() => {
+                        setView('books');
+                        scrollToTop();
+                    }}
                     onSelectBookmark={handleBookmarkSelect}
                 />
             )}
@@ -152,7 +171,10 @@ function BiblePageContent() {
                 <BibleChapterSelector
                     book={selectedBook}
                     onSelectChapter={handleChapterSelect}
-                    onBack={() => setView('books')}
+                    onBack={() => {
+                        setView('books');
+                        scrollToTop();
+                    }}
                 />
             )}
 
@@ -162,11 +184,12 @@ function BiblePageContent() {
                     chapter={selectedChapter}
                     initialVerse={initialVerse}
                     onBack={() => {
-                        setView(lastRead ? 'books' : 'chapters'); // Go back to books if we resumed, else chapters? Or just standard back flow? 
+                        setView('chapters'); // Go back to books if we resumed, else chapters? Or just standard back flow? 
                         // Better user exp: If came from bookmarks, maybe go back to bookmarks?
                         // For simplicity, let's check if we just want to go up one level.
                         // If we are in reader, back usually goes to chapters.
                         setView('chapters');
+                        scrollToTop();
                     }}
                     onNext={() => {
                         // Check if we can go to next chapter in current book

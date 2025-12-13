@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Bookmark } from 'lucide-react';
 import { useChapter } from '../../hooks/useBible';
 import type { BibleBook, BibleVerse } from '../../services/BibleService';
 import { VerseActionMenu } from './VerseActionMenu';
@@ -26,6 +26,7 @@ function VerseItem({
     fontSize,
     fontFamily,
     isSelected,
+    isFlashing,
     bookmarked,
     onLongPress,
     verseRefSetter
@@ -34,6 +35,7 @@ function VerseItem({
     fontSize: number;
     fontFamily: string;
     isSelected: boolean;
+    isFlashing: boolean;
     bookmarked: boolean;
     onLongPress: (verse: BibleVerse) => void;
     verseRefSetter: (verseId: number, el: HTMLDivElement | null) => void;
@@ -53,11 +55,27 @@ function VerseItem({
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseLeave}
             onTouchEnd={onTouchEnd}
-            className={`relative group p-2 -mx-2 rounded-lg transition-colors cursor-pointer select-none ${isSelected ? 'bg-surface-highlight border border-accent/20' : 'hover:bg-surface-highlight/50 active:bg-surface-highlight'} ${bookmarked ? 'border-l-4 border-l-gold bg-gold/5 dark:bg-gold/10' : ''}`}
+            className={`relative group p-2 -mx-2 rounded-lg transition-all duration-1000 cursor-pointer select-none
+                ${isSelected ? 'bg-surface-highlight border border-accent/20' : ''}
+                ${isFlashing ? 'bg-gold/30' : 'hover:bg-surface-highlight/50 active:bg-surface-highlight'}
+                ${bookmarked && !isFlashing ? 'bg-gold/5' : ''}
+            `}
+            data-verse={verse.verse}
         >
-            <span className="absolute -left-2 top-3 text-xs font-bold text-accent opacity-60">
+            {/* Verse Number */}
+            <span className={`absolute -left-2 top-3 text-xs font-bold transition-colors duration-300 z-10 ${bookmarked ? 'text-gold' : 'text-accent opacity-60'}`}>
                 {verse.verse}
             </span>
+
+            {/* Bookmark Indicator (Icon + Subtle Shimmer) */}
+            {bookmarked && (
+                <>
+                    <div className="absolute top-2 right-2 opacity-80">
+                        <Bookmark size={14} className="fill-gold text-gold" />
+                    </div>
+                </>
+            )}
+
             <p
                 className="leading-relaxed text-primary selection:bg-accent/30 pl-2 transition-all duration-300"
                 style={{
@@ -77,9 +95,11 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
     const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const { fontSize, fontFamily } = useBibleSettings();
-    const { isBookmarked } = useBibleProgress();
+    const { isBookmarked, saveProgress, markChapterCompleted } = useBibleProgress();
     const verses = data?.verses || [];
     const verseRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+
+    const [flashingVerse, setFlashingVerse] = useState<number | null>(null);
 
     // Immersive Mode State
     const { setBottomNavVisible } = useLayout();
@@ -91,7 +111,7 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
         const onScroll = (e: Event) => {
             const target = e.target as HTMLElement;
             // Ensure we are tracking the main scroll container
-            if (target.tagName !== 'MAIN' && target !== document.documentElement) return;
+            if (target.id !== 'main-scroll-container') return;
 
             const currentScrollY = target.scrollTop;
             const diff = currentScrollY - lastScrollY.current;
@@ -112,11 +132,16 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
             lastScrollY.current = currentScrollY;
         };
 
-        // Use capture phase to detect scroll on nested 'main' element
-        window.addEventListener('scroll', onScroll, { capture: true });
+        // Attach to the main scroll container directly
+        const mainContainer = document.getElementById('main-scroll-container');
+        if (mainContainer) {
+            mainContainer.addEventListener('scroll', onScroll, { capture: true }); // Capture might not be needed if attached directly, but safe
+        }
 
         return () => {
-            window.removeEventListener('scroll', onScroll, { capture: true });
+            if (mainContainer) {
+                mainContainer.removeEventListener('scroll', onScroll, { capture: true });
+            }
             setBottomNavVisible(true); // Reset on unmount
         };
     }, [setBottomNavVisible]);
@@ -125,40 +150,112 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
     useEffect(() => {
         if (!loading && initialVerse && verseRefs.current[initialVerse]) {
             setTimeout(() => {
-                verseRefs.current[initialVerse]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // Optional: Flash highlights or something
+                // Flash the verse
+                setFlashingVerse(initialVerse);
+
+                // Scroll to top
+                verseRefs.current[initialVerse]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Remove flash after animation
+                setTimeout(() => {
+                    setFlashingVerse(null);
+                }, 2000);
             }, 500);
         }
     }, [loading, initialVerse]);
 
-    // Track progress (simple version: save current chapter/book when internal component mounts or potentially on scroll)
-    // For now, let's just save "Last Read" as the start of the chapter when we enter it, 
-    // or if the user clicks a verse. IntersectionObserver is better but more complex.
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    // Progress Tracking (IntersectionObserver)
     useEffect(() => {
-        if (!loading) {
-            // saveProgress({
-            //     bookId: book.id,
-            //     bookName: book.name,
-            //     chapter: chapter,
-            //     verse: initialVerse || 1 // Default to 1 if no specific verse
-            // });
+        if (loading || verses.length === 0) return;
+
+        const observerCallback: IntersectionObserverCallback = (entries) => {
+            entries.forEach(entry => {
+                const target = entry.target as HTMLElement;
+
+                // Verse Tracking
+                if (target.getAttribute('data-verse')) {
+                    if (entry.isIntersecting) {
+                        const verseId = parseInt(target.getAttribute('data-verse') || '0');
+                        if (verseId > 0) {
+                            saveProgress({
+                                bookId: book.id,
+                                bookName: book.name,
+                                chapter: chapter,
+                                verse: verseId
+                            });
+                        }
+                    }
+                }
+
+                // Chapter Completion (Sentinel)
+                if (target === sentinelRef.current && entry.isIntersecting) {
+                    console.log('Chapter Completed:', book.id, chapter);
+                    markChapterCompleted(book.id, chapter);
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(observerCallback, {
+            root: document.getElementById('main-scroll-container'),
+            rootMargin: '-20% 0px -20% 0px', // Center focused for verses
+            threshold: 0.1
+        });
+
+        // Separate observer for Sentinel (more lenient)
+        const sentinelObserver = new IntersectionObserver(observerCallback, {
+            root: document.getElementById('main-scroll-container'),
+            rootMargin: '100px 0px 0px 0px', // Trigger slightly before end
+            threshold: 0.1
+        });
+
+        // Observe all verses
+        Object.values(verseRefs.current).forEach(el => {
+            if (el) observer.observe(el);
+        });
+
+        // Observe sentinel
+        if (sentinelRef.current) {
+            sentinelObserver.observe(sentinelRef.current);
         }
-    }, [book.id, chapter, loading]); // Remove initialVerse from deps to avoid saving updates when just scrolling (unless we track scroll)
 
-    // Verify if we should update progress on scroll - users might want to know EXACTLY where they left off.
-    // For this MVP, let's update progress when a user CLICKS a verse (selection) as a strong signal.
-    // We already do it on chapter load.
+        return () => {
+            observer.disconnect();
+            sentinelObserver.disconnect();
+        };
+    }, [loading, verses, book.id, chapter, saveProgress, markChapterCompleted]);
 
-    const handleVerseLongPress = (verse: BibleVerse) => {
-        setSelectedVerse(verse);
-    };
-
-    // Toggle header on tap if hidden (optional feature from request: "if tapped ... return it")
+    // Handle container click for showing header
     const handleContainerClick = () => {
         if (!isHeaderVisible) {
             setIsHeaderVisible(true);
             setBottomNavVisible(true);
         }
+    };
+
+    // Scroll Helper
+    const scrollToTop = () => {
+        const mainContainer = document.getElementById('main-scroll-container');
+        if (mainContainer) {
+            mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            window.scrollTo(0, 0);
+        }
+    };
+
+    const handleNext = () => {
+        onNext();
+        scrollToTop();
+    };
+
+    const handlePrevious = () => {
+        onPrevious();
+        scrollToTop();
+    };
+
+    const handleVerseLongPress = (verse: BibleVerse) => {
+        setSelectedVerse(verse);
     };
 
     if (loading) {
@@ -193,8 +290,8 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h2 className="text-lg font-bold text-primary">{book.name} {chapter}</h2>
-                        <p className="text-xs text-secondary">Berean Study Bible</p>
+                        <h2 className="text-xl font-ancient font-bold text-gold uppercase tracking-widest">{book.name} {chapter}</h2>
+                        <p className="text-xs text-secondary font-sans">Berean Study Bible</p>
                     </div>
                 </div>
                 <button
@@ -214,16 +311,19 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                         fontSize={fontSize}
                         fontFamily={fontFamily}
                         isSelected={selectedVerse?.verse === verse.verse}
+                        isFlashing={flashingVerse === verse.verse}
                         bookmarked={isBookmarked(book.id, chapter, verse.verse)}
                         onLongPress={handleVerseLongPress}
                         verseRefSetter={(id, el) => { verseRefs.current[id] = el; }}
                     />
                 ))}
+                {/* Sentinel for detection */}
+                <div ref={sentinelRef} className="h-1 w-full" data-testid="chapter-end-sentinel" />
             </div>
 
             <div className="px-5 py-8 grid grid-cols-2 gap-4">
                 <button
-                    onClick={(e) => { e.stopPropagation(); onPrevious(); }}
+                    onClick={(e) => { e.stopPropagation(); handlePrevious(); }}
                     disabled={isFirstChapter}
                     className={`text-primary font-semibold flex items-center justify-center gap-2 w-full py-4 bg-surface rounded-xl shadow-sm border border-default transition-all ${isFirstChapter ? 'opacity-50 cursor-not-allowed' : 'active:scale-95 hover:border-accent hover:text-accent'}`}
                 >
@@ -231,7 +331,7 @@ export function BibleReader({ book, chapter, onBack, onNext, onPrevious, isFirst
                     Previous
                 </button>
                 <button
-                    onClick={(e) => { e.stopPropagation(); onNext(); }}
+                    onClick={(e) => { e.stopPropagation(); handleNext(); }}
                     className="text-primary font-semibold flex items-center justify-center gap-2 w-full py-4 bg-surface rounded-xl shadow-sm border border-default transition-all active:scale-95 hover:border-accent hover:text-accent"
                 >
                     {isLastChapter ? 'Next Book' : 'Next Chapter'}

@@ -4,6 +4,7 @@ import { db } from './firebase';
 export interface UserStats {
     prayersCount: number;
     versesRead: number;
+    chaptersRead: number;
     daysStreak: number;
     lastActiveDate: any; // Timestamp
 }
@@ -29,6 +30,7 @@ export const UserStatsService = {
                     [statName]: 1,
                     prayersCount: statName === 'prayersCount' ? 1 : 0,
                     versesRead: statName === 'versesRead' ? 1 : 0,
+                    chaptersRead: statName === 'chaptersRead' ? 1 : 0,
                     daysStreak: 1,
                     lastActiveDate: serverTimestamp()
                 });
