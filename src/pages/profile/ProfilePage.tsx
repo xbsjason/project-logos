@@ -92,9 +92,11 @@ export function ProfilePage() {
 
     // Fetch Posts
     useEffect(() => {
+        // Reset posts immediately when tab changes to avoid flash of stale content
+        setPosts([]);
+
         const fetchPosts = async () => {
             if (!targetUserId) return;
-            // distinct loading state for posts if needed, but reusing main loading for simplicity or just let it load in background
 
             try {
                 const constraints = [
