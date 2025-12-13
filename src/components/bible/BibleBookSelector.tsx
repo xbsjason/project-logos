@@ -91,7 +91,7 @@ export function BibleBookSelector({ books, onSelectBook }: BibleBookSelectorProp
     };
 
     return (
-        <div className="flex-1 overflow-y-auto pb-20 bg-background transition-colors duration-300">
+        <div className="flex-1 overflow-y-auto pb-32 bg-background transition-colors duration-300">
             <div className="px-6 space-y-8">
                 {/* Old Testament */}
                 <section>
