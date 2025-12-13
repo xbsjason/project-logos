@@ -2,11 +2,11 @@ import { ArrowLeft, Camera, Check, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth'; // Import from 'firebase/auth'
 import { auth, db, storage } from '../../services/firebase'; // Added storage
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Added storage imports
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'; // Added storage imports
 
 import { useRef } from 'react'; // Added useRef
 import { compressImage } from '../../utils/imageUtils'; // Import compression utility
@@ -29,28 +29,40 @@ export function EditProfilePage() {
     const [originalUsername, setOriginalUsername] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
     const [uploadingPhoto, setUploadingPhoto] = useState(false); // State for photo upload
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null); // Local preview state
+    const [firestorePhotoUrl, setFirestorePhotoUrl] = useState<string | null>(null); // Fresh from DB
 
     useEffect(() => {
         const fetchExtendedData = async () => {
             if (user?.uid) {
                 const docRef = doc(db, 'users', user.uid);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setBio(data.bio || '');
-                    setWebsite(data.website || '');
-                    // Ensure local state matches if not set by auth context yet (username)
-                    if (data.username) {
-                        setUsername(data.username);
-                        setOriginalUsername(data.username);
-                        setUsernameAvailable(true); // Own username is available
+                // Use getDoc (or onSnapshot if we wanted real-time here too, but getDoc is likely fine for "on entry")
+                // Actually, since we want to be SURE we see the update we just made if we navigated back quickly,
+                // getDoc from server or onSnapshot is best. 
+                // Let's us onSnapshot to be consistent with ProfilePage and guarantee freshness.
+                const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        setBio(data.bio || '');
+                        setWebsite(data.website || '');
+                        if (data.username) {
+                            setUsername(data.username);
+                            setOriginalUsername(data.username);
+                            setUsernameAvailable(true);
+                        }
+                        if (data.photoURL) {
+                            setFirestorePhotoUrl(data.photoURL);
+                        }
                     }
-                }
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            } else {
                 setLoading(false);
             }
         };
         fetchExtendedData();
-    }, [user]); // Removed username from dependency to avoid loop
+    }, [user?.uid]); // Only depend on UID changing
 
     // Debounced username check
     useEffect(() => {
@@ -174,12 +186,31 @@ export function EditProfilePage() {
                 return;
             }
 
+            // SET LOCAL PREVIEW IMMEDIATELY
+            const objectUrl = URL.createObjectURL(file);
+            setPreviewUrl(objectUrl);
+
             setUploadingPhoto(true);
             try {
+                // 1. CLEANUP: Delete old photo if it exists and is a firebase storage URL
+                if (user.photoURL && user.photoURL.includes('firebasestorage.googleapis.com')) {
+                    try {
+                        // Create a ref from the existing URL
+                        const oldImageRef = ref(storage, user.photoURL);
+                        await deleteObject(oldImageRef);
+                    } catch (cleanupError) {
+                        console.warn("Failed to cleanup old profile photo:", cleanupError);
+                        // Continue with upload even if cleanup fails
+                    }
+                }
+
                 // Compress image before upload
                 const compressedBlob = await compressImage(file);
 
-                const storageRef = ref(storage, `profile_photos/${user.uid}`);
+                // 2. UNIQUE FALENAME: Append timestamp to force browser cache refresh
+                const timestamp = Date.now();
+                const storageRef = ref(storage, `profile_photos/${user.uid}_${timestamp}`);
+
                 await uploadBytes(storageRef, compressedBlob);
                 const photoURL = await getDownloadURL(storageRef);
 
@@ -192,12 +223,13 @@ export function EditProfilePage() {
                 }
 
                 // Force refresh or just rely on reactive user object if it updates (might need manual state update if context doesn't auto-fetch deep changes immediately)
-                // Alternatively, use a local preview state if needed, but context user update is cleaner if it propagates.
                 // Ideally we'd have a local preview URL state, but changing the auth profile should trigger the context update.
+                // We can also forcefully update the preview if needed, but let's see if context handles it.
 
             } catch (error) {
                 console.error("Error uploading photo:", error);
                 alert("Failed to upload photo. Please try again.");
+                setPreviewUrl(null); // Revert preview on error
             } finally {
                 setUploadingPhoto(false);
             }
@@ -236,7 +268,7 @@ export function EditProfilePage() {
                 />
                 <div onClick={handlePhotoClick} className="relative group cursor-pointer inline-block">
                     <img
-                        src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Jason"}
+                        src={previewUrl || firestorePhotoUrl || user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Jason"}
                         alt="Profile"
                         className="w-24 h-24 rounded-full border-4 border-surface shadow-md bg-surface-highlight object-cover"
                     />

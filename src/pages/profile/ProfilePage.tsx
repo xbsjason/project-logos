@@ -3,7 +3,7 @@ import { MOCK_POSTS } from '../../data/mockData';
 import type { Post } from '../../data/mockData';
 import { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Play } from 'lucide-react';
@@ -29,50 +29,60 @@ export function ProfilePage() {
     const [followLoading, setFollowLoading] = useState(false);
 
     // Fetch Profile Data
+    // Fetch Profile Data
     useEffect(() => {
         if (!targetUserId) return;
 
         setLoading(true);
 
-        const fetchProfile = async () => {
-            try {
-                // 1. Try fetching by ID (Document Key)
-                const docRef = doc(db, 'users', targetUserId);
-                const docSnap = await getDoc(docRef);
+        // Define a variable to hold the unsubscribe function
+        let unsubscribe: () => void;
 
-                if (docSnap.exists()) {
-                    setProfileData(docSnap.data() as UserProfile);
-                } else {
-                    // 2. Fallback: Try fetching by 'username' field
-                    // This handles mentions like @jason linking to /profile/jason where 'jason' is username but not ID
+        // 1. Try listening to the document by ID (Primary Method)
+        // This covers the "Own Profile" case perfectly as targetUserId is the UID.
+        const docRef = doc(db, 'users', targetUserId);
+
+        unsubscribe = onSnapshot(docRef, async (docSnap) => {
+            if (docSnap.exists()) {
+                setProfileData(docSnap.data() as UserProfile);
+                setLoading(false);
+            } else {
+                // 2. Fallback: If doc doesn't exist by ID, try finding by username
+                // This handles mentions like @jason
+                try {
                     const q = query(collection(db, 'users'), where('username', '==', targetUserId));
                     const querySnapshot = await getDocs(q);
 
                     if (!querySnapshot.empty) {
                         const userDoc = querySnapshot.docs[0];
                         setProfileData(userDoc.data() as UserProfile);
-                        // NOTE: If we found by username, the 'targetUserId' derived from URL 
-                        // might not match the actual 'uid'. 
-                        // Ideally we should update some local state to the *actual* uid for 
-                        // subsequent operations like 'follow' or fetching posts.
-                        // However, for this MVP fix, we'll assume the data is mainly for display.
-                        // Fetching posts uses 'authorId', which normally matches the UID.
-                        // If we found by username, we need the REAL UID for fetching posts.
+                        // NOTE: For 'other' users found by username, we are just fetching once here.
+                        // Ideally we would subscribe to the found UID for real-time updates too, 
+                        // but sticking to the ID-based subscription is most important for the "Edit Profile" flow.
                     } else {
                         setProfileData(null);
                     }
+                } catch (err) {
+                    console.error("Error fetching profile by username:", err);
+                    setProfileData(null);
+                } finally {
+                    setLoading(false);
                 }
-            } catch (err) {
-                console.error("Error fetching profile:", err);
-            } finally {
-                setLoading(false);
             }
+        }, (error) => {
+            console.error("Error listening to profile:", error);
+            setLoading(false);
+        });
+
+        // Cleanup subscription on unmount or id change
+        return () => {
+            if (unsubscribe) unsubscribe();
         };
+    }, [targetUserId]);
 
-        fetchProfile();
-
-        // Check follow status if viewing someone else
-        if (!isOwnProfile && currentUser) {
+    // Check follow status if viewing someone else (Separate Effect)
+    useEffect(() => {
+        if (!isOwnProfile && currentUser && targetUserId) {
             UserService.isFollowing(currentUser.uid, targetUserId)
                 .then(setIsFollowing)
                 .catch(console.error);
@@ -241,11 +251,19 @@ export function ProfilePage() {
             {/* Profile Info */}
             <div className="flex flex-col items-center pt-2 pb-6 px-4 text-center -mt-8">
                 <div className="relative">
-                    <img
-                        src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200"
-                        alt="Profile"
-                        className="w-24 h-24 rounded-full border-4 border-surface shadow-md object-cover dark:border-accent"
-                    />
+                    {profileData?.photoURL ? (
+                        <img
+                            src={profileData.photoURL}
+                            alt={profileData.displayName || "Profile"}
+                            className="w-24 h-24 rounded-full border-4 border-surface shadow-md object-cover dark:border-navy-700"
+                        />
+                    ) : (
+                        <div className="w-24 h-24 rounded-full border-4 border-surface shadow-md dark:border-navy-700 bg-gradient-to-br from-gold/80 to-gold-dark flex items-center justify-center">
+                            <span className="text-3xl font-bold text-white font-serif">
+                                {(profileData?.displayName || profileData?.username || '?').charAt(0).toUpperCase()}
+                            </span>
+                        </div>
+                    )}
                     <div className="absolute bottom-0 right-0 bg-gold text-white text-[10px] px-2 py-0.5 rounded-full border-2 border-surface shadow-sm font-bold">
                         LVL 12
                     </div>
