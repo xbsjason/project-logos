@@ -138,7 +138,7 @@ function BiblePageContent() {
                         <div className="px-6 mb-6">
                             <button
                                 onClick={handleResume}
-                                className="w-full bg-surface border border-gold/30 p-4 rounded-xl flex items-center justify-between shadow-sm hover:border-gold transition-all group relative overflow-hidden animate-shimmer-gold"
+                                className="w-full h-[72px] bg-surface border border-gold/30 p-4 rounded-xl flex items-center justify-between shadow-sm hover:border-gold transition-all group relative overflow-hidden animate-shimmer-gold"
                             >
                                 <div className="text-left relative z-10">
                                     <span className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
