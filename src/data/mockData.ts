@@ -28,60 +28,97 @@ export interface Post {
 export const MOCK_POSTS: Post[] = [
     {
         id: '1',
-        authorId: 'mock-user-id',
+        authorId: 'user-1',
         author: {
             name: 'GraceWalker',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Grace'
         },
         type: 'image',
-        content: 'https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=800&auto=format&fit=crop&q=60',
-        caption: 'Quiet time this morning. The Lord is good! #blessed #morningdevotion',
+        // High quality nature portrait
+        content: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=800&auto=format&fit=crop&q=80',
+        caption: 'Morning quiet time. The sunrise reminds me of His mercies which are new every morning. #blessed #creation',
         likes: 124,
         comments: 15,
         shares: 4,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
         verse: {
-            ref: 'Psalm 46:10',
-            text: 'Be still, and know that I am God.'
+            ref: 'Lamentations 3:22-23',
+            text: 'The steadfast love of the Lord never ceases; his mercies never come to an end...'
         }
     },
     {
         id: '2',
-        authorId: 'mock-user-id',
+        authorId: 'user-2',
         author: {
             name: 'WorshipDaily',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Worship'
         },
         type: 'text',
-        content: 'Your faithfulness extends to every generation, like a thread of gold weaving through history.',
-        caption: 'Reflecting on His faithfulness today.',
+        // Content acts as the main text
+        content: 'In the waiting, in the searching, in the healing, and the hurting... You are still God.',
+        caption: 'He is faithful in every season.',
         likes: 89,
         comments: 8,
         shares: 22,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
         song: {
-            title: 'Oceans (Where Feet May Fail)',
-            artist: 'Hillsong United'
+            title: 'Seasons',
+            artist: 'Hillsong Worship'
         }
     },
     {
         id: '3',
-        authorId: 'mock-user-id',
+        authorId: 'user-3',
         author: {
             name: 'BibleStudyGroup',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Study'
         },
-        type: 'image',
-        content: 'https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?w=800&auto=format&fit=crop&q=60',
-        caption: 'Join us for reading John 3 tomorrow!',
+        type: 'verse_art',
+        // Vertical bible art style image
+        content: 'https://images.unsplash.com/photo-1507692049790-de58293a4697?w=800&auto=format&fit=crop&q=80',
+        caption: 'Join us for reading John 3 tomorrow! Let’s dive deep.',
         likes: 45,
         comments: 20,
         shares: 1,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
         verse: {
             ref: 'John 3:16',
             text: 'For God so loved the world that He gave His only begotten Son...'
         }
+    },
+    {
+        id: '4',
+        authorId: 'user-4',
+        author: {
+            name: 'SarahJ',
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah'
+        },
+        type: 'prayer',
+        content: 'Please pray for my mother\'s surgery tomorrow. We are trusting God for a full recovery and peace for the family.',
+        caption: 'Trusting in Him.',
+        likes: 0,
+        comments: 24,
+        shares: 2,
+        createdAt: new Date(Date.now() - 10800000).toISOString(),
+        prayerCount: 24,
+        answered: false
+    },
+    {
+        id: '5',
+        authorId: 'user-5',
+        author: {
+            name: 'DavidM',
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David'
+        },
+        type: 'praise',
+        content: 'Praise report! I finally found a job after 6 months of searching. God is faithful to provide right on time!',
+        caption: 'He is Jehovah Jireh!',
+        likes: 0,
+        comments: 45,
+        shares: 10,
+        createdAt: new Date(Date.now() - 18000000).toISOString(),
+        prayerCount: 156,
+        answered: true
     }
 ];
 
