@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, Music, CheckCircle2, MoreHorizontal, Play, Repeat2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Music, CheckCircle2, MoreHorizontal, Repeat2 } from 'lucide-react';
 import type { Post } from '../../data/mockData';
 import { Avatar } from '../ui/Avatar';
 import { useAuth } from '../../contexts/AuthContext';
@@ -171,12 +171,12 @@ function PostContent({ post, isActive }: { post: Post, isActive: boolean }) {
 function PostActions({ post }: { post: Post }) {
     const { user } = useAuth();
     const [liked, setLiked] = useState(false); // In real app, init from user interaction status
-    const [likesCount, setLikesCount] = useState(post.likes || 0);
+    const [_, setLikesCount] = useState(post.likes || 0);
 
     // Prayer specific
     const isPrayerPost = ['prayer', 'praise'].includes(post.type);
     const [prayed, setPrayed] = useState(false);
-    const [prayerCount, setPrayerCount] = useState(post.prayerCount || 0);
+    const [__, setPrayerCount] = useState(post.prayerCount || 0);
 
     // Initial sync with localStorage for demo (same as previous implementation)
     useEffect(() => {

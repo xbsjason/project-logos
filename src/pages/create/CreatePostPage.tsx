@@ -1,27 +1,41 @@
-import { useState } from 'react';
-import { ArrowLeft, ChevronRight, Upload, X, Music, Type } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, ChevronRight, Upload, X, Music } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PostTypeSelector } from '../../components/create/PostTypeSelector';
 import type { PostType } from '../../components/create/PostTypeSelector';
+import { VerseArtEditor } from '../../components/verse-art/VerseArtEditor';
+import { VersePicker } from '../../components/verse-art/VersePicker';
+import { useBibleSettings } from '../../contexts/BibleContext';
 
 export function CreatePostPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { version } = useBibleSettings();
 
     // Derived state from URL
     const initialType = searchParams.get('type') as PostType | null;
     const initialRef = searchParams.get('verseRef');
     const initialText = searchParams.get('verseText');
-    const isVerseArt = initialType === 'verse_art' && initialRef && initialText;
+    const isVerseArt = initialType === 'verse_art';
 
     // State
     const [step, setStep] = useState(isVerseArt ? 2 : 1);
     const [postType, setPostType] = useState<PostType | null>(initialType);
     const [caption, setCaption] = useState('');
     const [mediaFile, setMediaFile] = useState<File | null>(null);
-    const [verseData] = useState<{ ref: string, text: string } | null>(
-        isVerseArt ? { ref: initialRef, text: initialText } : null
+
+    // Verse Art State
+    const [verseData, setVerseData] = useState<{ ref: string, text: string } | null>(
+        initialRef && initialText ? { ref: initialRef, text: initialText } : null
     );
+    const [showVersePicker, setShowVersePicker] = useState(false);
+
+    // If type is verse_art but no verse data, show picker
+    useEffect(() => {
+        if (postType === 'verse_art' && !verseData && step === 2) {
+            setShowVersePicker(true);
+        }
+    }, [postType, verseData, step]);
 
     const handleNext = () => {
         if (step === 1 && postType) setStep(2);
@@ -33,39 +47,54 @@ export function CreatePostPage() {
         else navigate(-1);
     };
 
-    const handleSubmit = () => {
-        // Mock submission
-        console.log('Submitting post:', { postType, caption, mediaFile, verseData });
+    const handleSubmit = (blob?: Blob, captionText?: string) => {
+        // Real submission logic would go here, utilizing PostService.
+        // For Verse Art, the editor gives us a Blob.
+        console.log('Submitting post:', {
+            postType,
+            caption: captionText || caption,
+            mediaFile,
+            verseArtBlob: blob
+        });
         navigate('/');
     };
 
+    const handleVerseSelect = (ref: string, text: string) => {
+        setVerseData({ ref, text });
+        setShowVersePicker(false);
+    };
+
+    // Render VersePicker if active
+    if (showVersePicker) {
+        return (
+            <VersePicker
+                version={version}
+                onSelect={handleVerseSelect}
+                onClose={() => {
+                    setShowVersePicker(false);
+                    // If no verse selected and we cancel, staying on step 2 might look empty.
+                    // Maybe go back to step 1?
+                    if (!verseData) setStep(1);
+                }}
+            />
+        );
+    }
+
+    // Verse Art Editor Mode - Takes over the screen
+    if (step === 2 && postType === 'verse_art' && verseData) {
+        return (
+            <VerseArtEditor
+                verseRef={verseData.ref}
+                verseText={verseData.text}
+                version={version.toUpperCase()} // Standardize version display
+                onBack={handleBack}
+                onPost={(blob, caption) => handleSubmit(blob, caption)}
+                onChangeVerse={() => setShowVersePicker(true)}
+            />
+        );
+    }
+
     const renderMediaStep = () => {
-        if (postType === 'verse_art' && verseData) {
-            return (
-                <div className="p-4 max-w-md mx-auto">
-                    <div className="aspect-[4/5] bg-gradient-to-br from-navy to-purple-900 rounded-2xl flex flex-col items-center justify-center p-8 text-center shadow-xl relative overflow-hidden group">
-                        {/* Mock customization controls */}
-                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="p-2 bg-white/20 rounded-full text-white backdrop-blur-md">
-                                <Type size={20} />
-                            </button>
-                        </div>
-
-                        <h3 className="text-gold font-bold text-xl mb-4 font-serif">{verseData.ref}</h3>
-                        <p className="text-white text-lg font-serif italic leading-relaxed">
-                            "{verseData.text}"
-                        </p>
-                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/20 backdrop-blur-sm text-white/60 text-xs">
-                            FaithVoice Verse Art
-                        </div>
-                    </div>
-                    <p className="text-center text-sm text-gray-400 mt-4">
-                        Tap "Next" to add a caption.
-                    </p>
-                </div>
-            );
-        }
-
         // Default Media Uploader
         return (
             <div className="p-4 max-w-md mx-auto w-full h-full flex flex-col justify-center">
@@ -170,7 +199,7 @@ export function CreatePostPage() {
                         </button>
 
                         <button
-                            onClick={handleSubmit}
+                            onClick={() => handleSubmit()}
                             className="w-full py-4 bg-gold text-white font-bold rounded-xl shadow-md active:scale-[0.98] transition-transform mt-8"
                         >
                             Share Post
