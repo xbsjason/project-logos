@@ -223,22 +223,15 @@ function BiblePageContent() {
                     chapter={selectedChapter}
                     initialVerse={initialVerse}
                     onBack={() => {
-                        setCurrentView('chapters'); // Go back to books if we resumed, else chapters? Or just standard back flow? 
-                        // Better user exp: If came from bookmarks, maybe go back to bookmarks?
-                        // For simplicity, let's check if we just want to go up one level.
-                        // If we are in reader, back usually goes to chapters.
                         setCurrentView('chapters');
                         scrollToTop();
                     }}
                     onNext={() => {
-                        // Check if we can go to next chapter in current book
                         if (selectedChapter < selectedBook.chapterCount) {
                             setSelectedChapter(c => c + 1);
                             setInitialVerse(undefined);
                             window.scrollTo(0, 0);
-                        }
-                        // If not, go to next book
-                        else {
+                        } else {
                             const currentBookIndex = books.findIndex(b => b.id === selectedBook.id);
                             if (currentBookIndex < books.length - 1) {
                                 setSelectedBook(books[currentBookIndex + 1]);
@@ -249,14 +242,11 @@ function BiblePageContent() {
                         }
                     }}
                     onPrevious={() => {
-                        // Check if we can go to prev chapter
                         if (selectedChapter > 1) {
                             setSelectedChapter(c => c - 1);
                             setInitialVerse(undefined);
                             window.scrollTo(0, 0);
-                        }
-                        // If not, go to prev book
-                        else {
+                        } else {
                             const currentBookIndex = books.findIndex(b => b.id === selectedBook.id);
                             if (currentBookIndex > 0) {
                                 const prevBook = books[currentBookIndex - 1];

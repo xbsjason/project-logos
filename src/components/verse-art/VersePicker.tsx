@@ -76,7 +76,7 @@ export function VersePicker({ version, onSelect, onClose }: VersePickerProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-[60] bg-background flex flex-col animate-in slide-in-from-bottom duration-200">
+        <div className="fixed inset-0 z-[60] bg-white text-navy flex flex-col animate-in slide-in-from-bottom duration-200">
             {/* Header */}
             <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-cream-200 shadow-sm shrink-0">
                 <button onClick={handleBack} className="p-2 -ml-2 text-navy hover:bg-cream-100 rounded-full transition-colors">
@@ -102,7 +102,7 @@ export function VersePicker({ version, onSelect, onClose }: VersePickerProps) {
                                 onClick={() => handleBookSelect(book)}
                                 className="w-full text-left px-6 py-4 bg-white hover:bg-cream-50 active:bg-cream-100 flex items-center justify-between group"
                             >
-                                <span className="font-serif font-medium text-lg text-primary">{book.name}</span>
+                                <span className="font-serif font-medium text-lg text-navy">{book.name}</span>
                                 <ChevronRight className="text-gray-300 group-hover:text-gold" size={20} />
                             </button>
                         ))}

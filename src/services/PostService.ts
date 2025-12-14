@@ -8,7 +8,12 @@ import {
     doc,
     where,
     startAfter,
-    DocumentSnapshot
+    DocumentSnapshot,
+    updateDoc,
+    increment,
+    setDoc,
+    deleteDoc,
+    serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Post } from '../data/mockData'; // We'll eventually move Post type to types folder
@@ -77,6 +82,38 @@ export const PostService = {
             console.error("Error fetching tag posts:", error);
             // Fallback since index might be missing
             return [];
+        }
+    },
+
+    async likePost(postId: string, userId: string) {
+        if (!postId || !userId) return;
+        const postRef = doc(db, 'posts', postId);
+        try {
+            // 1. Update post like count
+            await updateDoc(postRef, {
+                likes: increment(1)
+            });
+            // 2. Track user like (could be subcollection)
+            const likeRef = doc(db, 'posts', postId, 'likes', userId);
+            await setDoc(likeRef, {
+                userId,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error liking post:", error);
+        }
+    },
+
+    async unlikePost(postId: string, userId: string) {
+        if (!postId || !userId) return;
+        const postRef = doc(db, 'posts', postId);
+        try {
+            await updateDoc(postRef, {
+                likes: increment(-1)
+            });
+            await deleteDoc(doc(db, 'posts', postId, 'likes', userId));
+        } catch (error) {
+            console.error("Error unliking post:", error);
         }
     }
 };

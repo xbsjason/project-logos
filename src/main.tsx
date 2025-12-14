@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
 import { AudioProvider } from './contexts/AudioContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { BibleProvider } from './contexts/BibleContext'
 import { registerSW } from 'virtual:pwa-register'
 
 // Register service worker with auto-update
@@ -33,7 +34,9 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <ThemeProvider>
         <AudioProvider>
-          <App />
+          <BibleProvider>
+            <App />
+          </BibleProvider>
         </AudioProvider>
       </ThemeProvider>
     </AuthProvider>

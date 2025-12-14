@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
-import { Check, RefreshCw, Type, X, Loader2 } from 'lucide-react';
+import { Check, RefreshCw, X, Loader2 } from 'lucide-react';
 import { verseArtService } from '../../services/VerseArtService';
+import type { RenderConfig } from '../../workers/verseArt.worker';
 
 interface VerseArtEditorProps {
     verseRef: string;
@@ -155,32 +156,27 @@ export function VerseArtEditor({ verseRef, verseText, version = "NIV", onBack, o
                         </div>
                     </div>
 
-                    {/* Text Settings */}
-                    <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-cream-200 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <span className="p-2 bg-cream-100 text-navy rounded-lg">
-                                <Type size={20} />
-                            </span>
-                            <span className="font-semibold text-navy">Text Color</span>
-                        </div>
-                        <div className="flex bg-cream-100 p-1 rounded-lg">
+                    {/* Text Settings (Compact) */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Text Color</label>
+                        <div className="flex gap-3 px-1">
                             <button
                                 onClick={() => setTextColor('#ffffff')}
-                                className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${textColor === '#ffffff'
-                                    ? 'bg-white text-navy shadow-sm'
-                                    : 'text-gray-500 hover:text-navy'
+                                className={`w-12 h-12 rounded-full border-2 shadow-sm transition-all flex items-center justify-center ${textColor === '#ffffff' ? 'border-gold ring-2 ring-gold/20 scale-105' : 'border-gray-200'
                                     }`}
+                                style={{ backgroundColor: '#ffffff' }}
+                                aria-label="White Text"
                             >
-                                White
+                                {textColor === '#ffffff' && <Check size={20} className="text-navy" />}
                             </button>
                             <button
                                 onClick={() => setTextColor('#000000')}
-                                className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${textColor === '#000000'
-                                    ? 'bg-white text-navy shadow-sm'
-                                    : 'text-gray-500 hover:text-navy'
+                                className={`w-12 h-12 rounded-full border-2 shadow-sm transition-all flex items-center justify-center ${textColor === '#000000' ? 'border-gold ring-2 ring-gold/20 scale-105' : 'border-gray-200'
                                     }`}
+                                style={{ backgroundColor: '#000000' }}
+                                aria-label="Black Text"
                             >
-                                Black
+                                {textColor === '#000000' && <Check size={20} className="text-white" />}
                             </button>
                         </div>
                     </div>

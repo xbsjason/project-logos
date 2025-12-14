@@ -5,6 +5,8 @@ import { Avatar } from '../ui/Avatar';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserStatsService } from '../../services/UserStatsService';
 import { useNavigate, Link } from 'react-router-dom';
+import { UserService } from '../../services/UserService';
+import { clsx } from "clsx";
 
 interface FeedPostProps {
     post: Post;
@@ -54,6 +56,36 @@ export function FeedPost({ post, isActive, isDetailView = false }: FeedPostProps
 // -- Subcomponents --
 
 function PostHeader({ post }: { post: Post }) {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // Check follow status (only if logged in and not own post)
+    useEffect(() => {
+        if (!user || user.uid === post.authorId) return;
+
+        UserService.isFollowing(user.uid, post.authorId).then(setIsFollowing);
+    }, [user, post.authorId]);
+
+    const handleFollow = async () => {
+        if (!user || loading) return;
+        setLoading(true);
+        try {
+            if (isFollowing) {
+                await UserService.unfollowUser(user.uid, post.authorId);
+                setIsFollowing(false);
+            } else {
+                await UserService.followUser(user.uid, post.authorId);
+                setIsFollowing(true);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const timeDisplay = post.createdAt
         ? new Date().getTime() - new Date(post.createdAt).getTime() < 86400000
             ? '2h ago' // Mock relative time for now
@@ -75,10 +107,17 @@ function PostHeader({ post }: { post: Post }) {
     return (
         <div className="flex items-center justify-between px-4 py-2">
             <div className="flex items-center gap-3">
-                <Avatar src={post.author.avatar} name={post.author.name} size="sm" className="w-8 h-8 md:w-10 md:h-10" />
+                <div onClick={(e) => { e.stopPropagation(); navigate(`/profile/${post.authorId}`); }} className="cursor-pointer">
+                    <Avatar src={post.author.avatar} name={post.author.name} size="sm" className="w-8 h-8 md:w-10 md:h-10" />
+                </div>
                 <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">{post.author.name}</span>
+                        <span
+                            onClick={(e) => { e.stopPropagation(); navigate(`/profile/${post.authorId}`); }}
+                            className="font-bold text-sm text-white cursor-pointer hover:underline"
+                        >
+                            {post.author.name}
+                        </span>
                         <span className="text-[10px] font-bold text-secondary bg-white/10 px-1.5 rounded uppercase tracking-wider">
                             {getTypeLabel()}
                         </span>
@@ -87,9 +126,26 @@ function PostHeader({ post }: { post: Post }) {
                 </div>
             </div>
 
-            <button className="p-2 text-secondary hover:text-white transition-colors">
-                <MoreHorizontal size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+                {user && user.uid !== post.authorId && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleFollow(); }}
+                        disabled={loading}
+                        className={clsx(
+                            "text-xs font-bold px-3 py-1 rounded-full transition-all",
+                            isFollowing
+                                ? "bg-white/10 text-white hover:bg-white/20"
+                                : "bg-gold text-navy-950 hover:bg-gold-light"
+                        )}
+                    >
+                        {loading ? "..." : isFollowing ? "Following" : "Follow"}
+                    </button>
+                )}
+
+                <button className="p-2 text-secondary hover:text-white transition-colors">
+                    <MoreHorizontal size={20} />
+                </button>
+            </div>
         </div>
     );
 }
@@ -168,33 +224,59 @@ function PostContent({ post, isActive }: { post: Post, isActive: boolean }) {
     );
 }
 
+
 function PostActions({ post }: { post: Post }) {
     const { user } = useAuth();
-    const [liked, setLiked] = useState(false); // In real app, init from user interaction status
-    const [_, setLikesCount] = useState(post.likes || 0);
+    const [liked, setLiked] = useState(false);
+    const [likesCount, setLikesCount] = useState(post.likes || 0);
+    const [bookmarked, setBookmarked] = useState(false);
 
     // Prayer specific
     const isPrayerPost = ['prayer', 'praise'].includes(post.type);
     const [prayed, setPrayed] = useState(false);
     const [__, setPrayerCount] = useState(post.prayerCount || 0);
 
-    // Initial sync with localStorage for demo (same as previous implementation)
+    // Check captured like status if needed (optimistic for now)
+
     useEffect(() => {
         if (isPrayerPost && localStorage.getItem(`prayed_${post.id}`) === 'true') {
             setPrayed(true);
         }
     }, [post.id, isPrayerPost]);
 
-    const handleLike = (e: React.MouseEvent) => {
+    // Sync likes count with prop if it updates (e.g. from real-time listener in Detail view)
+    useEffect(() => {
+        setLikesCount(post.likes || 0);
+    }, [post.likes]);
+
+    const handleLike = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (liked) {
-            setLiked(false);
-            setLikesCount(p => p - 1);
-        } else {
-            setLiked(true);
-            setLikesCount(p => p + 1);
+        if (!user) return; // Prompt login?
+
+        const newLiked = !liked;
+        setLiked(newLiked);
+        setLikesCount(c => newLiked ? c + 1 : c - 1);
+
+        try {
+            if (newLiked) {
+                await import('../../services/PostService').then(m => m.PostService.likePost(post.id, user.uid));
+            } else {
+                await import('../../services/PostService').then(m => m.PostService.unlikePost(post.id, user.uid));
+            }
+        } catch (err) {
+            console.error("Like failed", err);
+            // Revert
+            setLiked(!newLiked);
+            setLikesCount(c => !newLiked ? c + 1 : c - 1);
         }
-        // Call API...
+    };
+
+    const handleBookmark = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setBookmarked(p => !p);
+        if (user && !bookmarked) {
+            UserStatsService.trackActivity(user.uid, 'bookmark', { postId: post.id });
+        }
     };
 
     const handlePray = async (e: React.MouseEvent) => {
@@ -229,11 +311,12 @@ function PostActions({ post }: { post: Post }) {
                         <span className="text-sm">{prayed ? 'Prayed' : 'I Pray'}</span>
                     </button>
                 ) : (
-                    <button onClick={handleLike} className="transition-transform active:scale-90">
+                    <button onClick={handleLike} className="transition-transform active:scale-90 flex items-center gap-1 group">
                         <Heart
                             size={26}
-                            className={liked ? 'fill-red-500 text-red-500' : 'text-white hover:text-gray-300'}
+                            className={liked ? 'fill-red-500 text-red-500' : 'text-white group-hover:text-gray-300 transition-colors'}
                         />
+                        {likesCount > 0 && <span className="text-xs text-gray-400 font-medium">{likesCount}</span>}
                     </button>
                 )}
 
@@ -250,12 +333,13 @@ function PostActions({ post }: { post: Post }) {
                 </button>
             </div>
 
-            <button className="text-white hover:text-gray-300 transition-transform active:scale-90">
-                <Bookmark size={26} />
+            <button onClick={handleBookmark} className="text-white hover:text-gray-300 transition-transform active:scale-90">
+                <Bookmark size={26} className={bookmarked ? 'fill-white' : ''} />
             </button>
         </div>
     );
 }
+
 
 function PostFooter({ post, isDetailView }: { post: Post, isDetailView: boolean }) {
     const navigate = useNavigate();
@@ -358,11 +442,38 @@ function SongBadge({ song }: { song: { title: string, artist: string } | undefin
     );
 }
 
-function VerseChip({ verse }: { verse: { ref: string, text: string } | undefined }) {
+function VerseChip({ verse }: { verse: { ref: string, text: string, id?: string } | undefined }) {
     if (!verse) return null;
+
+    // Construct link URL
+    // Format: /bible/kjv/BOOK/CHAPTER/VERSE
+    // If we have id in "BOOK:CHAPTER:VERSE" format
+    let linkUrl = '/bible';
+    if (verse.id) {
+        const parts = verse.id.split(':');
+        if (parts.length >= 2) {
+            linkUrl = `/bible/KJV/${parts[0]}/${parts[1]}${parts[2] ? '/' + parts[2] : ''}`;
+        }
+    } else {
+        // Fallback parsing (very basic)
+        // Ex: "John 3:16" -> "John", "3", "16"
+        // This is complex to regex reliably, so we might just default to /bible if no ID
+        // Or simplistic split
+        const match = verse.ref.match(/^(.+)\s(\d+):(\d+)/);
+        if (match) {
+            // Ideally we need standard book IDs. 
+            // For now, let's link to just bible root if no ID, or try best effort.
+            linkUrl = `/bible`;
+        }
+    }
+
     return (
-        <div className="inline-flex items-center gap-2 bg-navy-800/50 border border-navy-700 rounded px-2 py-1 text-xs">
-            <span className="font-bold text-gold">{verse.ref}</span>
-        </div>
+        <Link
+            to={linkUrl}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-2 bg-navy-800/50 border border-navy-700 rounded px-2 py-1 text-xs hover:bg-navy-800 transition-colors cursor-pointer group"
+        >
+            <span className="font-bold text-gold group-hover:underline">{verse.ref}</span>
+        </Link>
     );
 }

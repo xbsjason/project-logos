@@ -8,6 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { db, storage } from '../../services/firebase';
 import { collection, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { VerseArtEditor } from '../../components/verse-art/VerseArtEditor';
+import { VersePicker } from '../../components/verse-art/VersePicker';
+import { useBibleSettings } from '../../contexts/BibleContext';
 
 type PostType = 'prayer' | 'praise' | 'verse_art' | 'worship' | 'testimony';
 
@@ -15,6 +18,7 @@ export function UnifiedCreatePostScreen() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
+    const { version } = useBibleSettings();
 
     // -- State --
     const [content, setContent] = useState('');
@@ -25,18 +29,27 @@ export function UnifiedCreatePostScreen() {
 
     // UI State
     const [isMusicPickerOpen, setIsMusicPickerOpen] = useState(false);
+    const [showVersePicker, setShowVersePicker] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [videoFit, setVideoFit] = useState<'cover' | 'contain'>('cover');
 
     // -- Initialization --
     useEffect(() => {
-        const initialRef = searchParams.get('verseRef');
-        const initialText = searchParams.get('verseText');
-        const initialId = searchParams.get('verseId');
+        const initialRef = searchParams.get('verseRef') || searchParams.get('ref');
+        const initialText = searchParams.get('verseText') || searchParams.get('text');
+        const initialId = searchParams.get('verseId') || searchParams.get('id');
+        const initialType = searchParams.get('type') as PostType | null;
 
         if (initialRef && initialText) {
-            setVerseData({ ref: initialRef, text: initialText, id: initialId || undefined });
+            setVerseData({
+                ref: initialRef,
+                text: initialText,
+                id: initialId || undefined
+            });
+        }
+        if (initialType) {
+            setPostType(initialType);
         }
     }, [searchParams]);
 
@@ -54,6 +67,63 @@ export function UnifiedCreatePostScreen() {
         // 3. Default text-only
         return 'testimony';
     })();
+
+    // -- Verse Art Logic --
+    useEffect(() => {
+        if (postType === 'verse_art' && !verseData) {
+            setShowVersePicker(true);
+        }
+    }, [postType, verseData]);
+
+    const handleVerseSelect = (ref: string, text: string, bookId: string, chapter: number, verse: number) => {
+        setVerseData({ ref, text, id: `${bookId}:${chapter}:${verse}` });
+        setShowVersePicker(false);
+    };
+
+    const handleVerseArtPost = async (blob: Blob, caption: string) => {
+        if (!user) return;
+        setIsSubmitting(true);
+        try {
+            const postsCollection = collection(db, 'posts');
+            const newPostRef = doc(postsCollection);
+            const postId = newPostRef.id;
+
+            // Upload Blob
+            const path = `posts/${user.uid}/${postId}/verse_art.png`;
+            const storageRef = ref(storage, path);
+            await uploadBytes(storageRef, blob);
+            const mediaUrl = await getDownloadURL(storageRef);
+
+            await setDoc(newPostRef, {
+                id: postId,
+                authorId: user.uid,
+                author: {
+                    name: user.displayName || 'Anonymous',
+                    avatar: user.photoURL || null,
+                    username: user.username || user.uid
+                },
+                type: 'verse_art',
+                content: mediaUrl,
+                caption: caption,
+                tags: [],
+                mentions: [],
+                visibility: 'public',
+                mediaUrl,
+                thumbnailUrl: null,
+                isVideo: false,
+                verse: verseData ? { ref: verseData.ref, text: verseData.text, id: verseData.id } : null,
+                likes: 0, comments: 0, shares: 0, prayerCount: 0, prayedBy: {},
+                createdAt: serverTimestamp()
+            });
+
+            navigate('/');
+        } catch (error) {
+            console.error('Verse Art Post failed:', error);
+            setError('Failed to create post');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     // -- Handlers --
 
@@ -167,11 +237,49 @@ export function UnifiedCreatePostScreen() {
 
     const canPost = (content.length > 0 || !!mediaFile || !!verseData) && !isSubmitting;
 
-    // -- Render --
+    // -- Render Overlays --
+    // We render VersePicker as a true overlay to keep underlying state (like Canvas) alive
+    const renderPicker = () => {
+        if (!showVersePicker) return null;
+        return (
+            <VersePicker
+                version={version}
+                onSelect={handleVerseSelect}
+                onClose={() => {
+                    setShowVersePicker(false);
+                    // If we were auto-forcing verse art but didn't pick one, cancel mode
+                    if (postType === 'verse_art' && !verseData) {
+                        setPostType(null);
+                    }
+                }}
+            />
+        );
+    };
+
+    // If in Verse Art Mode, show Editor
+    if (postType === 'verse_art' && verseData) {
+        return (
+            <>
+                <VerseArtEditor
+                    verseRef={verseData.ref}
+                    verseText={verseData.text}
+                    version={version.toUpperCase()}
+                    onBack={() => setPostType(null)}
+                    onPost={handleVerseArtPost}
+                    onChangeVerse={() => setShowVersePicker(true)}
+                />
+                {renderPicker()}
+            </>
+        );
+    }
+
+    // -- Main Render --
     return (
-        <div className="min-h-screen bg-white flex flex-col">
+        <div className="h-full bg-white flex flex-col relative overflow-hidden">
+            {renderPicker()} {/* Render on top if active */}
+
             {/* Header */}
-            <div className="h-14 px-4 flex items-center justify-between border-b border-gray-100 bg-white sticky top-0 z-10">
+            <div className="h-14 px-4 flex items-center justify-between border-b border-gray-50 bg-white shrink-0 z-50">
                 <button
                     onClick={() => navigate(-1)}
                     className="p-2 -ml-2 text-navy hover:bg-gray-50 rounded-full transition-colors"
@@ -179,13 +287,13 @@ export function UnifiedCreatePostScreen() {
                 >
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="font-bold text-lg text-navy">Create</h1>
+                <h1 className="font-bold text-lg text-navy">New Post</h1>
                 <button
                     onClick={handlePost}
                     disabled={!canPost}
                     className="font-bold text-gold-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gold-700 transition-colors"
                 >
-                    {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : 'Post'}
+                    {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : 'Share'}
                 </button>
             </div>
 
@@ -197,123 +305,123 @@ export function UnifiedCreatePostScreen() {
             )}
 
             {/* Main Scrollable Area */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto pb-4 scrollbar-hide">
+                <div className="flex flex-col">
 
-                    {/* Text Input */}
-                    <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="What's on your heart?"
-                        className="w-full min-h-[120px] text-lg text-navy placeholder:text-gray-400 resize-none outline-none font-sans"
-                        autoFocus
-                    />
+                    {/* 1. Media Area (Instagram Style: Media First) */}
+                    {/* Only show if media exists, otherwise Text Input is primary */}
 
-                    {/* Attachments Preview */}
-                    <div className="space-y-3">
-                        {/* Media Preview */}
-                        {mediaFile && (
-                            <div
-                                className="relative rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 group transition-all duration-300 ease-out"
-                                style={{
-                                    // Height rule: min(60vh, screenWidth * 1.25) -> approx 125% width
-                                    // We use max-height to ensure it doesn't take over entire screen on desktop
-                                    maxHeight: '60vh',
-                                    aspectRatio: 'unset' // Let content determine or dynamic
-                                }}
+                    {mediaFile && (
+                        <div className="w-full bg-gray-50 relative group">
+                            <button
+                                onClick={() => setMediaFile(null)}
+                                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full z-20 hover:bg-black/70 transition-all backdrop-blur-md"
                             >
-                                <button
-                                    onClick={() => setMediaFile(null)}
-                                    className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full z-10 hover:bg-black/70 active:scale-95 transition-all"
-                                >
-                                    <X size={16} />
-                                </button>
+                                <X size={16} />
+                            </button>
 
-                                {mediaFile.type.startsWith('image/') ? (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                        <div className="absolute top-2 left-2 px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg text-white text-[10px] font-medium z-10 flex items-center gap-1">
-                                            <ImageIcon size={12} />
-                                            <span>Image</span>
-                                        </div>
-                                        <img
-                                            src={URL.createObjectURL(mediaFile)}
-                                            alt="Preview"
-                                            className="w-full h-auto max-h-[60vh] object-contain"
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="relative w-full h-full flex items-center justify-center bg-black min-h-[300px]">
-                                        {/* Video Controls Overlay */}
-                                        <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
-                                            {/* Fit/Fill Toggle */}
-                                            <div className="flex bg-black/50 backdrop-blur-md rounded-lg p-0.5 border border-white/10">
-                                                <button
-                                                    onClick={() => setVideoFit('contain')}
-                                                    className={clsx(
-                                                        "px-2 py-1 rounded-md text-[10px] font-medium transition-all",
-                                                        videoFit === 'contain' ? "bg-white text-black" : "text-white hover:bg-white/10"
-                                                    )}
-                                                >
-                                                    Fit
-                                                </button>
-                                                <button
-                                                    onClick={() => setVideoFit('cover')}
-                                                    className={clsx(
-                                                        "px-2 py-1 rounded-md text-[10px] font-medium transition-all",
-                                                        videoFit === 'cover' ? "bg-white text-black" : "text-white hover:bg-white/10"
-                                                    )}
-                                                >
-                                                    Fill
-                                                </button>
+                            {mediaFile.type.startsWith('image/') ? (
+                                <div className="w-full flex items-center justify-center bg-gray-100 min-h-[300px]">
+                                    <img
+                                        src={URL.createObjectURL(mediaFile)}
+                                        alt="Preview"
+                                        className="w-full h-auto max-h-[60vh] object-contain"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="relative w-full flex items-center justify-center bg-black min-h-[300px]">
+                                    {/* Video Controls Overlay */}
+                                    <button
+                                        onClick={() => setVideoFit(prev => prev === 'cover' ? 'contain' : 'cover')}
+                                        className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md text-white p-2 rounded-full z-20 hover:bg-white/20 transition-all border border-white/20"
+                                    >
+                                        {/* Simple Aspect Ratio Icon logic */}
+                                        {videoFit === 'cover' ? (
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="w-4 h-2.5 border-2 border-white rounded-[2px]" />
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="w-4 h-4 border-2 border-white rounded-[2px]" />
+                                            </div>
+                                        )}
+                                    </button>
 
-                                        <video
-                                            src={URL.createObjectURL(mediaFile)}
-                                            className={clsx(
-                                                "w-full h-full max-h-[60vh]",
-                                                videoFit === 'cover' ? "object-cover" : "object-contain"
-                                            )}
-                                            controls
-                                            playsInline
-                                        />
+                                    <video
+                                        src={URL.createObjectURL(mediaFile)}
+                                        className={clsx(
+                                            "w-full max-h-[60vh]",
+                                            videoFit === 'cover' ? "object-cover h-[400px]" : "object-contain h-auto"
+                                        )}
+                                        controls
+                                        playsInline
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 2. Text Content */}
+                    <div className="p-4">
+                        <div className="flex gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 overflow-hidden">
+                                {user?.photoURL ? (
+                                    <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-navy text-white font-bold text-sm">
+                                        {user?.displayName?.[0] || 'U'}
                                     </div>
                                 )}
                             </div>
-                        )}
+                            <textarea
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="Write a caption..."
+                                className="flex-1 min-h-[100px] text-base text-navy placeholder:text-gray-400 resize-none outline-none font-sans bg-transparent py-2"
+                                autoFocus={!mediaFile}
+                            />
+                        </div>
+                    </div>
 
+                    <div className="h-px bg-gray-100 mx-4" />
+
+                    {/* 3. Other Previews (Verse / Music) */}
+                    <div className="p-4 space-y-3">
                         {/* Verse Preview */}
                         {verseData && (
-                            <div className="bg-cream-100 rounded-xl p-4 relative border border-gold-200/50">
+                            <div className="bg-cream-50 rounded-xl p-4 relative border border-gold-100 flex items-start gap-4">
                                 <button
                                     onClick={() => setVerseData(null)}
-                                    className="absolute top-2 right-2 text-navy/40 hover:text-navy p-1"
+                                    className="absolute top-2 right-2 text-gray-400 hover:text-navy p-1"
                                 >
-                                    <X size={14} />
+                                    <X size={16} />
                                 </button>
-                                <div className="flex items-start gap-3">
-                                    <BookOpen size={20} className="text-gold-600 shrink-0 mt-0.5" />
-                                    <div>
-                                        <h4 className="font-bold text-navy text-sm font-serif">{verseData.ref}</h4>
-                                        <p className="text-navy/70 text-sm font-serif italic line-clamp-2">"{verseData.text}"</p>
-                                    </div>
+                                <div className="p-2 bg-white rounded-lg shadow-sm border border-cream-100 text-gold-600">
+                                    <BookOpen size={20} />
+                                </div>
+                                <div className="flex-1 pr-6">
+                                    <h4 className="font-bold text-navy text-sm font-serif mb-1">{verseData.ref}</h4>
+                                    <p className="text-navy/70 text-sm font-serif italic line-clamp-2">"{verseData.text}"</p>
                                 </div>
                             </div>
                         )}
 
                         {/* Music Preview */}
                         {selectedTrack && (
-                            <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm border border-purple-100">
-                                <div className="p-1 bg-purple-200 rounded-full">
-                                    <Music size={12} />
-                                </div>
-                                <span className="max-w-[150px] truncate">{selectedTrack.title}</span>
+                            <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100 relative">
                                 <button
                                     onClick={() => setSelectedTrack(null)}
-                                    className="ml-1 p-0.5 hover:bg-purple-200 rounded-full"
+                                    className="absolute top-1/2 -translate-y-1/2 right-3 text-purple-400 hover:text-purple-700"
                                 >
-                                    <X size={12} />
+                                    <X size={16} />
                                 </button>
+                                <div className="p-2 bg-white rounded-lg shadow-sm text-purple-600">
+                                    <Music size={20} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-navy">{selectedTrack.title}</div>
+                                    <div className="text-xs text-purple-600">{selectedTrack.artist}</div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -321,7 +429,7 @@ export function UnifiedCreatePostScreen() {
             </div>
 
             {/* Bottom Actions Area */}
-            <div className="bg-white border-t border-gray-50 pb-safe"> {/* pb-safe for iPhone bottom area */}
+            <div className="bg-white border-t border-gray-50 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-50">
 
                 {/* 1. Post Type Selector (Secondary) */}
                 <div className="px-4 py-3 overflow-x-auto no-scrollbar flex items-center gap-2 border-b border-gray-50">
@@ -387,14 +495,7 @@ export function UnifiedCreatePostScreen() {
 
                     {/* Verse */}
                     <button
-                        onClick={() => {
-                            // Simple prompt for MVP as requested ("Verse picker integration")
-                            const ref = prompt("Enter Verse Reference (e.g. John 3:16):");
-                            if (ref) {
-                                const text = prompt("Enter Verse Text:");
-                                if (text) setVerseData({ ref, text });
-                            }
-                        }}
+                        onClick={() => setShowVersePicker(true)}
                         className={clsx(
                             "flex-1 flex flex-col items-center gap-1 p-2 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors text-gray-600 active:scale-95",
                             verseData && "text-gold-600"
