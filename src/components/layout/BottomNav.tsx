@@ -13,7 +13,7 @@ export function BottomNav({ isVisible = true }: { isVisible?: boolean }) {
     ];
 
     return (
-        <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border pb-safe-area-bottom transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+        <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
             <div className="max-w-md mx-auto px-2 h-16 flex items-center justify-between">
                 {navItems.map(({ to, icon: Icon, label }) => (
                     <NavLink
