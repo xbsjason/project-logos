@@ -1,13 +1,9 @@
-import React, { ReactNode } from 'react';
+import React, { type ReactNode } from "react";
 
 interface ShellProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 export const Shell: React.FC<ShellProps> = ({ children }) => {
-    return (
-        <>
-            {children}
-        </>
-    );
+  return <>{children}</>;
 };
