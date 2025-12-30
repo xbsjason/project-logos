@@ -30,3 +30,7 @@ dist-ssr
 
 # Secrets
 scripts/serviceAccountKey.json
+
+# Tooling
+tools/bible-audio/venv/
+tools/bible-audio/piper/StartLine:32

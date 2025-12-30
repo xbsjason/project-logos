@@ -1,0 +1,33 @@
+import { initializeApp } from "firebase/app";
+import { getAuth, type Auth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
+import { getMessaging, type Messaging } from "firebase/messaging";
+
+// Initialize Firebase - must be done at module level, not in try-catch
+const app = initializeApp(firebaseConfig);
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
+
+let messaging: Messaging | null = null;
+try {
+    messaging = getMessaging(app);
+} catch (error) {
+    console.warn("Firebase Messaging not supported/initialized:", error);
+}
+
+const googleProvider = new GoogleAuthProvider();
+export { auth, db, storage, messaging, googleProvider };
+

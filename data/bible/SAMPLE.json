@@ -1,0 +1,20 @@
+[
+    {
+        "book": "John",
+        "chapter": 3,
+        "verse": 16,
+        "text": "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."
+    },
+    {
+        "book": "John",
+        "chapter": 3,
+        "verse": 17,
+        "text": "For God did not send his Son into the world to condemn the world, but to save the world through him."
+    },
+    {
+        "book": "John",
+        "chapter": 3,
+        "verse": 18,
+        "text": "Whoever believes in him is not condemned, but whoever does not believe stands condemned already because they have not believed in the name of God’s one and only Son."
+    }
+]

@@ -7,75 +7,70 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Semantic Tokens
-        background: 'var(--bg-background)',
-        surface: {
-          DEFAULT: 'var(--bg-surface)',
-          highlight: 'var(--bg-surface-highlight)',
+        // Semantic Tokens - The Core of the Design System
+        background: {
+          DEFAULT: 'var(--bg-background)',   // Main app background
+          muted: 'var(--bg-muted)',          // Slightly distinct areas
+          deep: 'var(--bg-deep)',            // High contrast areas
         },
-        primary: 'var(--text-primary)',
-        secondary: 'var(--text-secondary)',
-        accent: 'var(--text-accent)',
-
+        surface: {
+          DEFAULT: 'var(--bg-surface)',      // Cards, Modals
+          highlight: 'var(--bg-surface-highlight)', // Hover states
+          muted: 'var(--bg-surface-muted)',  // Secondary surfaces
+        },
+        text: {
+          primary: 'var(--text-primary)',    // Main headings
+          secondary: 'var(--text-secondary)',// Body text
+          muted: 'var(--text-muted)',        // Meta info
+          accent: 'var(--text-accent)',      // Links, highlights
+          inverse: 'var(--text-inverse)',    // Text on dark backgrounds
+        },
+        border: {
+          DEFAULT: 'var(--border-default)',
+          subtle: 'var(--border-subtle)',
+          highlight: 'var(--border-highlight)',
+        },
+        // Brand Palette (used via variables mostly, but exposed here for utilities)
         cream: {
-          50: '#FDFDFB', // Lighter off-white
-          100: '#F5F5F0', // Base off-white
+          50: '#FEFEFA',
+          100: '#F5F5F0',
           200: '#EBEBE0',
           300: '#D6D6C2',
-          DEFAULT: '#F5F5F0'
         },
         gold: {
-          DEFAULT: '#D4AF37', // Metallic Gold
+          DEFAULT: '#C8A951',
           light: '#E5C860',
           dark: '#B39122',
-          500: '#D4AF37', // Add standard weight for convenience
+          500: '#D4AF37',
         },
         navy: {
-          DEFAULT: '#0B1120', // Rich deep navy
-          light: '#1a2236',   // Lighter navy for cards/overlays
-          dark: '#020617',    // Very dark navy (almost black)
-          accent: '#0A84FF',  // Keep the blue accent or adjust slightly
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
+          DEFAULT: '#0B1120',
+          light: '#1a2236',
+          dark: '#020617',
         },
-        blue: {
-          // Adding a specific blue palette if needed, otherwise using standard Tailwind blue or navy.accent
-          accent: '#3B82F6', // Standard pleasant blue
-          500: '#3B82F6',
-        },
-        zinc: {
-          50: '#fafafa',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          700: '#3f3f46',
-          800: '#27272a',
-          900: '#18181b',
-          950: '#09090b',
-        }
-      },
-      textColor: {
-        primary: 'var(--text-primary)',
-        secondary: 'var(--text-secondary)',
-        accent: 'var(--text-accent)',
-        inverse: 'var(--text-inverse)',
-        // Inherit others
-      },
-      borderColor: {
-        DEFAULT: 'var(--border-default)',
-        highlight: 'var(--border-highlight)',
       },
       fontFamily: {
-        sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Inter', 'sans-serif'],
-        serif: ['New York', 'Charter', 'Georgia', 'serif'],
+        sans: ['Inter', 'SF Pro Display', '-apple-system', 'sans-serif'],
+        serif: ['Merriweather', 'Crimson Text', 'serif'],
         ancient: ['Cinzel', 'serif'],
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
+        '3xl': '2rem', // Softer feel
+        '4xl': '2.5rem',
+      },
+      boxShadow: {
+        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+        'glow': '0 0 15px rgba(212, 175, 55, 0.15)',
+        'deep': '0 10px 30px -5px rgba(0, 0, 0, 0.2)',
+      },
+      aspectRatio: {
+        '4/5': '4 / 5',
+        '9/16': '9 / 16',
       }
     },
   },
-  darkMode: 'class',
+  darkMode: ['class', '[data-theme="night"]'], // Support class logic if needed, but primary is attribute
   plugins: [],
 }

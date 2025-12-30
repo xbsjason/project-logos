@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+  <!-- <link rel="manifest" href="/manifest.webmanifest"> -->
+  <meta name="screen-orientation" content="portrait">
+  <meta name="x5-orientation" content="portrait">
+  <meta name="theme-color" content="#0B1120">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FaithVoice">
+  <title>faithvoice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Public+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+</head>
+
+<body style="background-color: #0B1120; margin: 0; padding: 0; overflow: hidden;">
+  <div id="root">
+    <!-- Initial Splash Screen (Replaced by React) -->
+    <style>
+      #initial-splash {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #0B1120;
+        background-image: url('/splash.png');
+        background-size: cover;
+        background-position: center;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+    <div id="initial-splash"></div>
+  </div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

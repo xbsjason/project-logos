@@ -4,7 +4,7 @@ import path from 'path';
 // Map of full book names to OSIS/Standard 3-letter codes
 const BOOK_MAP = {
     'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
-    'Joshua': 'JOS', 'Judges': 'JUD', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
+    'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
     '1 Kings': '1KI', '2 Kings': '2KI', '1 Chronicles': '1CH', '2 Chronicles': '2CH', 'Ezra': 'EZR',
     'Nehemiah': 'NEH', 'Esther': 'EST', 'Job': 'JOB', 'Psalm': 'PSA', 'Psalms': 'PSA', 'Proverbs': 'PRO',
     'Ecclesiastes': 'ECC', 'Song of Solomon': 'SNG', 'Isaiah': 'ISA', 'Jeremiah': 'JER',
@@ -106,3 +106,26 @@ fs.writeFileSync(outputFile, JSON.stringify(finalOutput, null, 2));
 
 console.log(`Successfully parsed ${verseCount} verses.`);
 console.log(`Output written to ${outputFile}`);
+
+// Audio Tool Compatibility: Output flat list
+const flatVerses = [];
+Object.values(bible.books).forEach(book => {
+    Object.values(book.chapters).forEach(chapter => {
+        chapter.verses.forEach(v => {
+            flatVerses.push({
+                book: book.name,
+                chapter: chapter.number,
+                verse: v.verse,
+                text: v.text
+            });
+        });
+    });
+});
+
+const audioDataDir = path.resolve('data/bible');
+if (!fs.existsSync(audioDataDir)) {
+    fs.mkdirSync(audioDataDir, { recursive: true });
+}
+const flatOutputPath = path.join(audioDataDir, 'BSB.json');
+fs.writeFileSync(flatOutputPath, JSON.stringify(flatVerses, null, 2));
+console.log(`[Audio Tool] Flat dataset written to ${flatOutputPath}`);

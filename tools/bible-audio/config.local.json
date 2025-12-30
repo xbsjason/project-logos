@@ -1,0 +1,19 @@
+{
+    "ttsBaseUrl": "http://localhost:5005",
+    "voiceId": "en_US-lessac-medium",
+    "speakingRate": 1.0,
+    "pitch": 0,
+    "volume": 1.0,
+    "pauseMsAfterVerse": 300,
+    "format": "wav",
+    "sampleRate": 24000,
+    "translation": "BSB",
+    "outputRoot": "public/audio/bible",
+    "mode": "verse",
+    "force": false,
+    "dryRun": false,
+    "concurrency": 2,
+    "retryCount": 2,
+    "maxCharsPerChunk": 300,
+    "audioExtension": "wav"
+}

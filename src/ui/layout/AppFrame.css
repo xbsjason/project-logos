@@ -1,0 +1,14 @@
+/* The only scroll container */
+.content {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* safe area for the page content */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  /* reserve space for bottom tabs + home indicator */
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}

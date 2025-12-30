@@ -1,37 +1,45 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+// import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    '__BUILD_TIMESTAMP__': JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true
-      },
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      manifest: {
-        name: 'FaithVoice',
-        short_name: 'FaithVoice',
-        description: 'Christian Social, Bible, Prayer and Worship Platform',
-        theme_color: '#F5F5F0',
-        background_color: '#F5F5F0',
-        display: 'standalone',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      }
-    })
+    // nodePolyfills({
+    //   include: ['stream', 'util', 'buffer'],
+    //   globals: {
+    //     Buffer: true,
+    //   },
+    // }),
+    // }),
+    // VitePWA({
+    //   registerType: 'prompt',
+    //   workbox: {
+    //     cleanupOutdatedCaches: true,
+    //     clientsClaim: true,
+    //     skipWaiting: true
+    //   },
+    //   devOptions: {
+    //     enabled: false // DISABLED BY USER REQUEST
+    //   },
+    //   injectRegister: null // Prevent auto-injection
+    // })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/analytics'],
+          ui: ['framer-motion', 'lucide-react', 'clsx', 'tailwind-merge']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000 // Raise limit slightly since we know we are splitting key chunks
+  }
 })

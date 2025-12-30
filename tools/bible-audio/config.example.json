@@ -1,0 +1,19 @@
+{
+    "ttsBaseUrl": "http://localhost:5002",
+    "voiceId": "en_US-hifi-tts_low",
+    "speakingRate": 1.0,
+    "pitch": 0,
+    "volume": 1.0,
+    "pauseMsAfterVerse": 300,
+    "format": "mp3",
+    "sampleRate": 24000,
+    "translation": "BSB",
+    "outputRoot": "public/audio/bible",
+    "mode": "verse",
+    "force": false,
+    "dryRun": false,
+    "concurrency": 2,
+    "retryCount": 2,
+    "maxCharsPerChunk": 300,
+    "audioExtension": "mp3"
+}
